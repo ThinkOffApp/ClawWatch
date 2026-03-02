@@ -8,7 +8,7 @@
 
 Tap. Speak. Get an answer. No cloud STT, no phone dependency, no latency from middlemen.
 
-ClawWatch runs [NullClaw](https://github.com/nullclaw/nullclaw) — a 2.6 MB static ARM64 binary — directly on a Galaxy Watch, paired with offline speech recognition (Vosk) and the built-in TTS engine. The agent talks to Claude Opus 4.6 (or any model you configure) and speaks the response back through the watch speaker.
+ClawWatch runs [NullClaw](https://github.com/nullclaw/nullclaw) — a 2.8 MB static ARM binary — directly on a Galaxy Watch, paired with offline speech recognition (Vosk) and the built-in TTS engine. The agent talks to Claude Opus 4.6 (or any model you configure) and speaks the response back through the watch speaker.
 
 **[Watch the first live demo on X](https://x.com/petruspennanen/status/2028503452788166751)**
 
@@ -26,7 +26,7 @@ Everything except the LLM call runs on the watch itself. No companion app needed
 
 | Component | What | Size |
 |---|---|---|
-| [NullClaw](https://github.com/nullclaw/nullclaw) | Agent runtime (Zig, static binary) | 2.6 MB |
+| [NullClaw](https://github.com/nullclaw/nullclaw) | Agent runtime (Zig, static binary) | 2.8 MB |
 | [Vosk](https://alphacephei.com/vosk/) | Offline speech-to-text | ~68 MB |
 | Android TextToSpeech | Voice output | 0 MB (pre-installed) |
 | Claude Opus 4.6 | Intelligence | cloud |
@@ -48,12 +48,12 @@ Everything except the LLM call runs on the watch itself. No companion app needed
 brew install zig   # must be 0.15.2
 ```
 
-### 2. Build NullClaw for ARM64 Android
+### 2. Build NullClaw for ARM Android
 
 ```bash
 git clone https://github.com/nullclaw/nullclaw
 cd nullclaw
-zig build -Dtarget=aarch64-linux-musl -Doptimize=ReleaseSmall
+zig build -Dtarget=arm-linux-musleabihf -Doptimize=ReleaseSmall
 cp zig-out/bin/nullclaw ../ClawWatch/app/src/main/assets/nullclaw
 ```
 
@@ -159,7 +159,7 @@ NullClaw supports 22+ providers including OpenRouter, OpenAI, Gemini, Groq, Mist
 |---|---|---|
 | RAM | >1 GB | ~1 MB |
 | Startup | 500+ s | <8 ms |
-| Binary | ~28 MB | **2.6 MB** |
+| Binary | ~28 MB | **2.8 MB** |
 | Language | TypeScript | Zig |
 
 A watch has 1.5–2 GB RAM. NullClaw uses 1 MB of it. OpenClaw would need the entire device.
