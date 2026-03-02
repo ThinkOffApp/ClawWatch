@@ -62,8 +62,8 @@ class MainActivity : AppCompatActivity() {
         voiceEngine.initTts()
 
         if (!clawRunner.hasApiKey()) {
-            setState(State.SETUP)
-            setStatus("Enter Anthropic key")
+            setState(State.IDLE)
+            setStatus("No key — run set_key.sh")
             return
         }
 
@@ -73,29 +73,14 @@ class MainActivity : AppCompatActivity() {
                 setStatus("Tap to talk")
             },
             onError = { err ->
-                // Vosk model not downloaded yet — still usable, STT falls back to status msg
                 Log.w(TAG, "Vosk not ready: $err")
                 setState(State.IDLE)
-                setStatus("Tap to talk (STT loading)")
+                setStatus("Tap to talk")
             }
         )
     }
 
-    private fun onSaveKey() {
-        val key = binding.apiKeyInput.text?.toString()?.trim() ?: ""
-        if (key.length < 20) {
-            setStatus("Key too short")
-            return
-        }
-        clawRunner.saveApiKey(key)
-        binding.setupPanel.visibility = View.GONE
-        lifecycleScope.launch {
-            voiceEngine.initVosk(
-                onReady = { setState(State.IDLE); setStatus("Tap to talk") },
-                onError = { setState(State.IDLE); setStatus("Tap to talk") }
-            )
-        }
-    }
+    private fun onSaveKey() { /* key set via ADB, not on-watch */ }
 
     private fun onFabTapped() {
         when (state) {
