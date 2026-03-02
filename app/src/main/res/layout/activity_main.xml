@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.wear.widget.BoxInsetLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="12dp">
+
+        <!-- Status line -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Starting…"
+            android:textColor="#AAAAAA"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:maxLines="1" />
+
+        <!-- What you asked -->
+        <TextView
+            android:id="@+id/queryText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:maxLines="2"
+            android:layout_marginTop="4dp" />
+
+        <!-- Thinking spinner -->
+        <ProgressBar
+            android:id="@+id/thinkingIndicator"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginTop="6dp"
+            android:visibility="gone" />
+
+        <!-- Response -->
+        <TextView
+            android:id="@+id/responseText"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:text=""
+            android:textColor="#D4A5E9"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:maxLines="5"
+            android:layout_marginTop="4dp" />
+
+        <!-- Big tap button -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:contentDescription="Tap to talk"
+            app:srcCompat="@android:drawable/ic_btn_speak_now"
+            app:backgroundTint="#D4A5E9" />
+
+    </LinearLayout>
+
+</androidx.wear.widget.BoxInsetLayout>
