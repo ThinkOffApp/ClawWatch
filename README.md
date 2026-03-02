@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo/clawwatch-logo.jpeg" alt="ClawWatch logo" width="280">
+</p>
+
 # ClawWatch
 
 **The first intelligent AI agent running natively on a smartwatch.**
@@ -142,4 +146,4 @@ A watch has 1.5–2 GB RAM. NullClaw uses 1 MB of it. OpenClaw would need the en
 
 AGPL-3.0 — see [LICENSE](LICENSE)
 
-Built by [ThinkOff](https://thinkoff.io) · Powered by [NullClaw](https://github.com/nullclaw/nullclaw)
+Built by [ThinkOff](https://thinkoff.io) · Powered by [NullClaw](https://github.com/nullclaw/nullclaw) · Logo by [herrpunk](https://github.com/herrpunk)
