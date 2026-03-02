@@ -10,13 +10,18 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.thinkoff.clawwatch.databinding.ActivityMainBinding
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
  * Main Wear OS activity.
  *
- * UX flow:
- *   IDLE  → tap FAB → LISTENING → (speech detected) → THINKING → SPEAKING → IDLE
+ * States:
+ *   SETUP     → no API key yet, show key entry
+ *   IDLE      → tap mic to start
+ *   LISTENING → Vosk capturing speech, partial shown
+ *   THINKING  → NullClaw + Opus 4.6 running
+ *   SPEAKING  → Android TTS playing response
  */
 class MainActivity : AppCompatActivity() {
 
@@ -28,14 +33,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var clawRunner: ClawRunner
     private lateinit var voiceEngine: VoiceEngine
 
-    private enum class State { IDLE, LISTENING, THINKING, SPEAKING }
-    private var state = State.IDLE
+    private enum class State { SETUP, IDLE, LISTENING, THINKING, SPEAKING }
+    private var state = State.SETUP
 
     private val requestMic = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) startListening()
-        else setStatus("Mic permission denied")
+        if (granted) startListening() else setStatus("Mic permission needed")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,20 +51,55 @@ class MainActivity : AppCompatActivity() {
         voiceEngine = VoiceEngine(this)
 
         binding.fab.setOnClickListener { onFabTapped() }
+        binding.saveKeyBtn.setOnClickListener { onSaveKey() }
 
+        lifecycleScope.launch { initialise() }
+    }
+
+    private suspend fun initialise() {
+        setStatus("Starting…")
+        clawRunner.ensureInstalled()
+        voiceEngine.initTts()
+
+        if (!clawRunner.hasApiKey()) {
+            setState(State.SETUP)
+            setStatus("Enter Anthropic key")
+            return
+        }
+
+        voiceEngine.initVosk(
+            onReady = {
+                setState(State.IDLE)
+                setStatus("Tap to talk")
+            },
+            onError = { err ->
+                // Vosk model not downloaded yet — still usable, STT falls back to status msg
+                Log.w(TAG, "Vosk not ready: $err")
+                setState(State.IDLE)
+                setStatus("Tap to talk (STT loading)")
+            }
+        )
+    }
+
+    private fun onSaveKey() {
+        val key = binding.apiKeyInput.text?.toString()?.trim() ?: ""
+        if (key.length < 20) {
+            setStatus("Key too short")
+            return
+        }
+        clawRunner.saveApiKey(key)
+        binding.setupPanel.visibility = View.GONE
         lifecycleScope.launch {
-            setStatus("Setting up…")
-            clawRunner.ensureInstalled()
-            voiceEngine.initTts()
             voiceEngine.initVosk(
-                onReady = { setStatus("Tap to talk") },
-                onError = { err -> setStatus("STT: $err") }
+                onReady = { setState(State.IDLE); setStatus("Tap to talk") },
+                onError = { setState(State.IDLE); setStatus("Tap to talk") }
             )
         }
     }
 
     private fun onFabTapped() {
         when (state) {
+            State.SETUP -> { /* handled by save button */ }
             State.IDLE -> {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                     == PackageManager.PERMISSION_GRANTED
@@ -68,13 +107,11 @@ class MainActivity : AppCompatActivity() {
                 else requestMic.launch(Manifest.permission.RECORD_AUDIO)
             }
             State.LISTENING -> {
-                // Tap again to stop listening early and process what we have
                 voiceEngine.stopListening()
                 setState(State.IDLE)
                 setStatus("Tap to talk")
             }
             State.THINKING, State.SPEAKING -> {
-                // Tap to interrupt
                 voiceEngine.stopSpeaking()
                 setState(State.IDLE)
                 setStatus("Tap to talk")
@@ -88,40 +125,41 @@ class MainActivity : AppCompatActivity() {
         voiceEngine.startListening(
             onResult = { text ->
                 runOnUiThread {
-                    Log.i(TAG, "STT result: $text")
                     voiceEngine.stopListening()
+                    binding.queryText.text = "\u201c$text\u201d"
                     askClaw(text)
                 }
             },
             onPartial = { partial ->
-                runOnUiThread { setStatus("\"$partial\"") }
+                runOnUiThread { setStatus(partial) }
             }
         )
     }
 
     private fun askClaw(prompt: String) {
         setState(State.THINKING)
-        setStatus("Thinking…")
-        binding.queryText.text = prompt
+        setStatus("Opus 4.6 thinking…")
 
         lifecycleScope.launch {
             val result = clawRunner.query(prompt)
             result.fold(
                 onSuccess = { response ->
-                    Log.i(TAG, "Claw response: $response")
+                    binding.responseText.text = response
                     setState(State.SPEAKING)
                     setStatus("Speaking…")
-                    binding.responseText.text = response
                     voiceEngine.speak(response)
-                    // After TTS finishes, go idle (simple delay approach)
-                    kotlinx.coroutines.delay(response.length * 60L + 1000L)
-                    setState(State.IDLE)
-                    setStatus("Tap to talk")
+                    // Estimate TTS duration, then return to idle
+                    delay(response.length * 55L + 1000L)
+                    if (state == State.SPEAKING) {
+                        setState(State.IDLE)
+                        setStatus("Tap to talk")
+                    }
                 },
                 onFailure = { err ->
+                    val msg = err.message ?: "Error"
+                    setStatus(msg)
+                    voiceEngine.speak("Sorry, $msg")
                     setState(State.IDLE)
-                    setStatus("Error: ${err.message}")
-                    voiceEngine.speak("Sorry, something went wrong.")
                 }
             )
         }
@@ -130,20 +168,21 @@ class MainActivity : AppCompatActivity() {
     private fun setState(s: State) {
         state = s
         runOnUiThread {
-            binding.fab.contentDescription = when (s) {
-                State.IDLE -> "Tap to talk"
-                State.LISTENING -> "Tap to stop"
-                State.THINKING -> "Thinking"
-                State.SPEAKING -> "Tap to stop"
-            }
+            binding.setupPanel.visibility  = if (s == State.SETUP)    View.VISIBLE else View.GONE
+            binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
             binding.thinkingIndicator.visibility =
                 if (s == State.THINKING) View.VISIBLE else View.GONE
+            binding.fab.contentDescription = when (s) {
+                State.IDLE      -> "Tap to talk"
+                State.LISTENING -> "Tap to stop"
+                State.THINKING  -> "Thinking"
+                State.SPEAKING  -> "Tap to stop"
+                State.SETUP     -> ""
+            }
         }
     }
 
-    private fun setStatus(msg: String) {
-        runOnUiThread { binding.statusText.text = msg }
-    }
+    private fun setStatus(msg: String) = runOnUiThread { binding.statusText.text = msg }
 
     override fun onDestroy() {
         super.onDestroy()

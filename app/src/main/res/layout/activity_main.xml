@@ -6,45 +6,83 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
+    <!-- SETUP PANEL: shown when no API key -->
     <LinearLayout
+        android:id="@+id/setupPanel"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="12dp">
+        android:padding="16dp"
+        android:visibility="gone">
 
-        <!-- Status line -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Anthropic API Key"
+            android:textColor="#D4A5E9"
+            android:textSize="13sp"
+            android:gravity="center" />
+
+        <EditText
+            android:id="@+id/apiKeyInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="sk-ant-..."
+            android:textColor="#FFFFFF"
+            android:textColorHint="#666666"
+            android:textSize="11sp"
+            android:inputType="textPassword"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/saveKeyBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#D4A5E9" />
+
+    </LinearLayout>
+
+    <!-- MAIN PANEL: shown after setup -->
+    <LinearLayout
+        android:id="@+id/mainPanel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="12dp"
+        android:visibility="gone">
+
         <TextView
             android:id="@+id/statusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Starting…"
-            android:textColor="#AAAAAA"
+            android:textColor="#888888"
             android:textSize="11sp"
             android:gravity="center"
             android:maxLines="1" />
 
-        <!-- What you asked -->
         <TextView
             android:id="@+id/queryText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text=""
-            android:textColor="#FFFFFF"
-            android:textSize="12sp"
+            android:textColor="#CCCCCC"
+            android:textSize="11sp"
             android:gravity="center"
             android:maxLines="2"
             android:layout_marginTop="4dp" />
 
-        <!-- Thinking spinner -->
         <ProgressBar
             android:id="@+id/thinkingIndicator"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginTop="6dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginTop="4dp"
             android:visibility="gone" />
 
-        <!-- Response -->
         <TextView
             android:id="@+id/responseText"
             android:layout_width="match_parent"
@@ -57,15 +95,15 @@
             android:maxLines="5"
             android:layout_marginTop="4dp" />
 
-        <!-- Big tap button -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:contentDescription="Tap to talk"
             app:srcCompat="@android:drawable/ic_btn_speak_now"
-            app:backgroundTint="#D4A5E9" />
+            app:backgroundTint="#D4A5E9"
+            app:fabSize="mini" />
 
     </LinearLayout>
 
