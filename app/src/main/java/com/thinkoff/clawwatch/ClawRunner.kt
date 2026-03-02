@@ -27,7 +27,8 @@ class ClawRunner(private val context: Context) {
     private val filesDir get() = context.filesDir
     // HOME = parent of filesDir so ~/.nullclaw/config.json lands at dataDir/.nullclaw/config.json
     private val homeDir get() = context.filesDir.parentFile!!
-    private val binaryFile get() = File(context.applicationInfo.nativeLibraryDir, "libnullclaw.so")
+    private val nativeLibDir get() = context.applicationInfo.nativeLibraryDir
+    private val binaryFile get() = File(nativeLibDir, "libnullclaw.so")
     private val configFile get() = File(filesDir, CONFIG_NAME)
     private val nullclawConfigFile get() = File(homeDir, ".nullclaw/config.json")
 
@@ -36,6 +37,16 @@ class ClawRunner(private val context: Context) {
     /** Write NullClaw home config with API key and model, copy app config from assets. */
     suspend fun ensureInstalled() = withContext(Dispatchers.IO) {
         Log.i(TAG, "NullClaw binary at ${binaryFile.absolutePath} (exists: ${binaryFile.exists()})")
+        // Symlink libcurl_bin.so → filesDir/curl so NullClaw can find it via PATH
+        val curlDest = File(filesDir, "curl")
+        if (!curlDest.exists()) {
+            val curlSrc = File(nativeLibDir, "libcurl_bin.so")
+            if (curlSrc.exists()) {
+                curlSrc.copyTo(curlDest, overwrite = true)
+                curlDest.setExecutable(true)
+                Log.i(TAG, "curl installed at ${curlDest.absolutePath}")
+            }
+        }
         if (!configFile.exists()) {
             context.assets.open(CONFIG_NAME).use { it.copyTo(configFile.outputStream()) }
         }
@@ -122,12 +133,12 @@ class ClawRunner(private val context: Context) {
                     environment().apply {
                         put("ANTHROPIC_API_KEY", apiKey)
                         put("HOME", homeDir.absolutePath)
-                        put("PATH", "/system/bin:/system/xbin")
-                        // CA bundle for Zig's TLS (musl has no system store on Android)
+                        // filesDir has our 'curl' binary — NullClaw calls curl as subprocess
+                        put("PATH", "${filesDir.absolutePath}:$nativeLibDir:/system/bin:/system/xbin")
+                        // CA bundle for curl's HTTPS calls
                         if (caBundleFile.exists()) {
-                            put("SSL_CERT_FILE", caBundleFile.absolutePath)
                             put("CURL_CA_BUNDLE", caBundleFile.absolutePath)
-                            put("CAINFO", caBundleFile.absolutePath)
+                            put("SSL_CERT_FILE", caBundleFile.absolutePath)
                         }
                     }
                 }
