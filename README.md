@@ -116,6 +116,28 @@ That's it. Open ClawWatch on the watch.
 
 The watch speaks the response aloud via the built-in speaker.
 
+## Admin Panel
+
+A local web UI for configuring the watch agent from your Mac — no ADB commands needed after initial install.
+
+```bash
+cd admin
+npm install
+node server.js
+# Open http://localhost:4747
+```
+
+The admin panel lets you:
+- **Watch status** — live ADB connection indicator (green dot when connected)
+- **API key** — push directly to the watch with one click
+- **Model** — switch between providers and models (claude-opus-4-6, gpt-4o, gemini, etc.)
+- **Max tokens** — slider with live value
+- **System prompt** — edit the agent's personality and instructions
+- **Push config** — saves locally and pushes to watch in one click
+- **Rebuild & reinstall** — triggers `./gradlew assembleDebug && adb install` from the browser
+
+The admin panel talks to the watch via ADB. Make sure `adb connect <watch-ip>:<port>` is active before pushing.
+
 ## Configuration
 
 Edit `nullclaw.json` to change model or provider:
