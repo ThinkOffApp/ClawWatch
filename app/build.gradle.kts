@@ -35,6 +35,12 @@ android {
         viewBinding = true
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     // Package the nullclaw binary from assets
     sourceSets {
         getByName("main") {

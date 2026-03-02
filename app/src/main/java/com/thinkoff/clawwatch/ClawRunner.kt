@@ -25,19 +25,44 @@ class ClawRunner(private val context: Context) {
     }
 
     private val filesDir get() = context.filesDir
-    // Android W^X: execute from nativeLibraryDir (always executable), config in filesDir
+    // HOME = parent of filesDir so ~/.nullclaw/config.json lands at dataDir/.nullclaw/config.json
+    private val homeDir get() = context.filesDir.parentFile!!
     private val binaryFile get() = File(context.applicationInfo.nativeLibraryDir, "libnullclaw.so")
     private val configFile get() = File(filesDir, CONFIG_NAME)
+    private val nullclawConfigFile get() = File(homeDir, ".nullclaw/config.json")
 
-    /** Copy config from assets on first run only. Binary lives in nativeLibraryDir. */
+    /** Write NullClaw home config with API key and model, copy app config from assets. */
     suspend fun ensureInstalled() = withContext(Dispatchers.IO) {
-        // Binary is in nativeLibraryDir (always executable — no W^X issue)
         Log.i(TAG, "NullClaw binary at ${binaryFile.absolutePath} (exists: ${binaryFile.exists()})")
-        // Only copy config if it doesn't exist — preserve any on-device changes
+        // Only copy app config if it doesn't exist
         if (!configFile.exists()) {
             context.assets.open(CONFIG_NAME).use { it.copyTo(configFile.outputStream()) }
         }
-        Log.i(TAG, "NullClaw ready")
+        // Always write ~/.nullclaw/config.json with API key + model so NullClaw is configured
+        writeNullclawHomeConfig()
+        Log.i(TAG, "NullClaw ready, home=${homeDir.absolutePath}")
+    }
+
+    /** Write ~/.nullclaw/config.json so NullClaw knows the model + provider. */
+    private fun writeNullclawHomeConfig() {
+        val apiKey = getApiKey() ?: return
+        nullclawConfigFile.parentFile?.mkdirs()
+        nullclawConfigFile.writeText("""
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "claude-opus-4-6"
+      }
+    }
+  },
+  "providers": {
+    "anthropic": {
+      "api_key": "$apiKey"
+    }
+  }
+}
+""".trimIndent())
     }
 
     fun saveApiKey(key: String) {
@@ -73,7 +98,7 @@ class ClawRunner(private val context: Context) {
                 .apply {
                     environment().apply {
                         put("ANTHROPIC_API_KEY", apiKey)
-                        put("HOME", filesDir.absolutePath)
+                        put("HOME", homeDir.absolutePath)
                         put("PATH", "/system/bin:/system/xbin")
                     }
                 }
