@@ -4,7 +4,12 @@ import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * Manages the NullClaw binary lifecycle.
@@ -112,64 +117,68 @@ class ClawRunner(private val context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(PREF_API_KEY, null)
 
+    // System prompt for voice responses
+    private val SYSTEM_PROMPT = "You are a voice assistant on a Samsung smartwatch. " +
+        "Rules: respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. " +
+        "Plain spoken language only. Be direct and precise. Never say 'Certainly!' or 'Great question!'"
+
     /**
-     * Run a NullClaw agent query.
-     * Fix #7: stdout and stderr read on separate threads to prevent pipe buffer deadlock.
+     * Call Anthropic API directly via Android's HTTP stack.
+     * Samsung Wear OS blocks network from subprocesses so we can't use NullClaw's curl.
      */
     suspend fun query(prompt: String): Result<String> = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
             ?: return@withContext Result.failure(RuntimeException("No API key — run ./set_key.sh"))
 
+        Log.i(TAG, "Querying Anthropic: '${prompt.take(50)}'")
         try {
-            val process = ProcessBuilder(
-                binaryFile.absolutePath,
-                "agent",
-                "--message", prompt,
-                "--output", "plain",
-                "--config", configFile.absolutePath
-            )
-                .directory(filesDir)
-                .apply {
-                    environment().apply {
-                        put("ANTHROPIC_API_KEY", apiKey)
-                        put("HOME", homeDir.absolutePath)
-                        // filesDir has our 'curl' binary — NullClaw calls curl as subprocess
-                        put("PATH", "${filesDir.absolutePath}:$nativeLibDir:/system/bin:/system/xbin")
-                        // CA bundle for curl's HTTPS calls
-                        if (caBundleFile.exists()) {
-                            put("CURL_CA_BUNDLE", caBundleFile.absolutePath)
-                            put("SSL_CERT_FILE", caBundleFile.absolutePath)
-                        }
-                    }
-                }
-                .start()
+            val body = JSONObject().apply {
+                put("model", "claude-opus-4-6")
+                put("max_tokens", 150)
+                put("system", SYSTEM_PROMPT)
+                put("messages", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("role", "user")
+                        put("content", prompt)
+                    })
+                })
+            }.toString()
 
-            // Fix #7: read stdout and stderr concurrently
-            Log.i(TAG, "NullClaw running: prompt='${prompt.take(50)}' binary=${binaryFile.absolutePath} home=${homeDir.absolutePath} config=${nullclawConfigFile.exists()}")
+            val url = URL("https://api.anthropic.com/v1/messages")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("x-api-key", apiKey)
+            conn.setRequestProperty("anthropic-version", "2023-06-01")
+            conn.connectTimeout = 30_000
+            conn.readTimeout = 30_000
+            conn.doOutput = true
 
-            var output = ""
-            var error = ""
-            val stdoutThread = Thread { output = process.inputStream.bufferedReader().readText() }
-            val stderrThread = Thread { error = process.errorStream.bufferedReader().readText() }
-            stdoutThread.start()
-            stderrThread.start()
-            val exit = process.waitFor()
-            stdoutThread.join()
-            stderrThread.join()
+            OutputStreamWriter(conn.outputStream).use { it.write(body) }
 
-            Log.i(TAG, "NullClaw exit=$exit output='${output.take(100)}' stderr='${error.take(200)}'")
+            val responseCode = conn.responseCode
+            val responseBody = if (responseCode == 200)
+                conn.inputStream.bufferedReader().readText()
+            else
+                conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $responseCode"
 
-            if (exit != 0) {
-                Log.e(TAG, "NullClaw failed exit $exit: $error")
-                Result.failure(RuntimeException(error.take(120)))
-            } else if (output.isBlank()) {
-                Log.e(TAG, "NullClaw returned empty output. stderr: $error")
-                Result.failure(RuntimeException(if (error.isNotBlank()) error.take(120) else "Empty response"))
-            } else {
-                Result.success(output.trim())
+            Log.i(TAG, "Anthropic response code=$responseCode")
+
+            if (responseCode != 200) {
+                Log.e(TAG, "Anthropic error: $responseBody")
+                return@withContext Result.failure(RuntimeException("API error $responseCode"))
             }
+
+            val text = JSONObject(responseBody)
+                .getJSONArray("content")
+                .getJSONObject(0)
+                .getString("text")
+                .trim()
+
+            Log.i(TAG, "Response: '${text.take(80)}'")
+            Result.success(text)
         } catch (e: Exception) {
-            Log.e(TAG, "ClawRunner error", e)
+            Log.e(TAG, "Query error", e)
             Result.failure(e)
         }
     }
