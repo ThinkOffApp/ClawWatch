@@ -6,6 +6,8 @@ Tap. Speak. Get an answer. No cloud STT, no phone dependency, no latency from mi
 
 ClawWatch runs [NullClaw](https://github.com/nullclaw/nullclaw) — a 2.6 MB static ARM64 binary — directly on a Galaxy Watch, paired with offline speech recognition (Vosk) and the built-in TTS engine. The agent talks to Claude Opus 4.6 (or any model you configure) and speaks the response back through the watch speaker.
 
+**[Watch the first live demo on X](https://x.com/petruspennanen/status/2028503452788166751)**
+
 ---
 
 ## How it works
