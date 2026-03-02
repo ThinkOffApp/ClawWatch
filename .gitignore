@@ -1,0 +1,30 @@
+# Build output
+app/build/
+build/
+.gradle/
+
+# Local config — contains SDK path, never commit
+local.properties
+
+# API keys — never commit
+app/src/main/assets/nullclaw.json
+
+# NullClaw binary — built locally, too large for git
+app/src/main/assets/nullclaw
+
+# Vosk model — downloaded locally, 68MB
+app/src/main/assets/vosk-model-small-en-us/
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keystore
+*.jks
+*.keystore
