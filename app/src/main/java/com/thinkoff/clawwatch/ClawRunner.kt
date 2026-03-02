@@ -31,16 +31,39 @@ class ClawRunner(private val context: Context) {
     private val configFile get() = File(filesDir, CONFIG_NAME)
     private val nullclawConfigFile get() = File(homeDir, ".nullclaw/config.json")
 
+    private val caBundleFile get() = File(filesDir, "ca-certificates.crt")
+
     /** Write NullClaw home config with API key and model, copy app config from assets. */
     suspend fun ensureInstalled() = withContext(Dispatchers.IO) {
         Log.i(TAG, "NullClaw binary at ${binaryFile.absolutePath} (exists: ${binaryFile.exists()})")
-        // Only copy app config if it doesn't exist
         if (!configFile.exists()) {
             context.assets.open(CONFIG_NAME).use { it.copyTo(configFile.outputStream()) }
         }
-        // Always write ~/.nullclaw/config.json with API key + model so NullClaw is configured
         writeNullclawHomeConfig()
+        buildCaBundle()
         Log.i(TAG, "NullClaw ready, home=${homeDir.absolutePath}")
+    }
+
+    /** Bundle Android system CA certs into a single PEM file for Zig's TLS. */
+    private fun buildCaBundle() {
+        if (caBundleFile.exists()) return
+        val certDirs = listOf(
+            "/apex/com.android.conscrypt/cacerts",
+            "/system/etc/security/cacerts"
+        )
+        val bundle = StringBuilder()
+        for (dir in certDirs) {
+            val d = File(dir)
+            if (!d.exists()) continue
+            d.listFiles()?.forEach { cert ->
+                try { bundle.append(cert.readText()).append("\n") } catch (_: Exception) {}
+            }
+            if (bundle.isNotEmpty()) break
+        }
+        if (bundle.isNotEmpty()) {
+            caBundleFile.writeText(bundle.toString())
+            Log.i(TAG, "CA bundle written: ${caBundleFile.absolutePath}")
+        }
     }
 
     /** Write ~/.nullclaw/config.json so NullClaw knows the model + provider. */
@@ -52,7 +75,7 @@ class ClawRunner(private val context: Context) {
   "agents": {
     "defaults": {
       "model": {
-        "primary": "claude-opus-4-6"
+        "primary": "anthropic/claude-opus-4-6"
       }
     }
   },
@@ -100,11 +123,19 @@ class ClawRunner(private val context: Context) {
                         put("ANTHROPIC_API_KEY", apiKey)
                         put("HOME", homeDir.absolutePath)
                         put("PATH", "/system/bin:/system/xbin")
+                        // CA bundle for Zig's TLS (musl has no system store on Android)
+                        if (caBundleFile.exists()) {
+                            put("SSL_CERT_FILE", caBundleFile.absolutePath)
+                            put("CURL_CA_BUNDLE", caBundleFile.absolutePath)
+                            put("CAINFO", caBundleFile.absolutePath)
+                        }
                     }
                 }
                 .start()
 
             // Fix #7: read stdout and stderr concurrently
+            Log.i(TAG, "NullClaw running: prompt='${prompt.take(50)}' binary=${binaryFile.absolutePath} home=${homeDir.absolutePath} config=${nullclawConfigFile.exists()}")
+
             var output = ""
             var error = ""
             val stdoutThread = Thread { output = process.inputStream.bufferedReader().readText() }
@@ -115,9 +146,14 @@ class ClawRunner(private val context: Context) {
             stdoutThread.join()
             stderrThread.join()
 
+            Log.i(TAG, "NullClaw exit=$exit output='${output.take(100)}' stderr='${error.take(200)}'")
+
             if (exit != 0) {
-                Log.e(TAG, "NullClaw exit $exit: $error")
+                Log.e(TAG, "NullClaw failed exit $exit: $error")
                 Result.failure(RuntimeException(error.take(120)))
+            } else if (output.isBlank()) {
+                Log.e(TAG, "NullClaw returned empty output. stderr: $error")
+                Result.failure(RuntimeException(if (error.isNotBlank()) error.take(120) else "Empty response"))
             } else {
                 Result.success(output.trim())
             }

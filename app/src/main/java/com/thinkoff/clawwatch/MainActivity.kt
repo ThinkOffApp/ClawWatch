@@ -155,6 +155,7 @@ class MainActivity : AppCompatActivity() {
     private fun setState(s: State) {
         state = s
         runOnUiThread {
+            binding.splashPanel.visibility = View.GONE
             binding.setupPanel.visibility  = if (s == State.SETUP)    View.VISIBLE else View.GONE
             binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
             binding.thinkingIndicator.visibility =

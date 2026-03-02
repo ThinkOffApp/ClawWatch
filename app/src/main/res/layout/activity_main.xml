@@ -6,6 +6,38 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
+    <!-- SPLASH: shown on startup while initialising -->
+    <LinearLayout
+        android:id="@+id/splashPanel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="visible">
+
+        <ImageView
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="ClawWatch"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ClawWatch"
+            android:textColor="#D4A5E9"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp" />
+
+        <ProgressBar
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginTop="12dp" />
+
+    </LinearLayout>
+
     <!-- SETUP PANEL: shown when no API key -->
     <LinearLayout
         android:id="@+id/setupPanel"
@@ -16,12 +48,19 @@
         android:padding="16dp"
         android:visibility="gone">
 
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@mipmap/ic_launcher"
+            android:scaleType="fitCenter"
+            android:layout_marginBottom="8dp" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Anthropic API Key"
+            android:text="Run set_key.sh\nfrom your Mac"
             android:textColor="#D4A5E9"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:gravity="center" />
 
         <EditText
@@ -33,7 +72,8 @@
             android:textColorHint="#666666"
             android:textSize="11sp"
             android:inputType="textPassword"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/saveKeyBtn"
@@ -41,7 +81,8 @@
             android:layout_height="wrap_content"
             android:text="Save"
             android:layout_marginTop="8dp"
-            android:backgroundTint="#D4A5E9" />
+            android:backgroundTint="#D4A5E9"
+            android:visibility="gone" />
 
     </LinearLayout>
 
