@@ -12,7 +12,8 @@
     <application
         android:allowBackup="false"
         android:label="ClawWatch"
-        android:theme="@android:style/Theme.DeviceDefault">
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.AppCompat.NoActionBar">
 
         <activity
             android:name=".MainActivity"

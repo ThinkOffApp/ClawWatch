@@ -66,10 +66,20 @@ app.post('/api/push/config', (req, res) => {
 app.post('/api/push/key', (req, res) => {
   const { key } = req.body;
   if (!key || key.length < 20) return res.json({ ok: false, error: 'Key too short' });
+  // Validate: only allow chars found in real API keys (alphanumeric, dash, underscore)
+  if (!/^[a-zA-Z0-9\-_]+$/.test(key)) return res.json({ ok: false, error: 'Invalid key format' });
+
   try {
-    const xml = `<map><string name="anthropic_api_key">${key}</string></map>`;
-    execSync(`adb shell run-as ${PKG} sh -c 'mkdir -p /data/data/${PKG}/shared_prefs && echo "${xml}" > /data/data/${PKG}/shared_prefs/clawwatch_prefs.xml'`);
-    res.json({ ok: true, message: 'API key pushed' });
+    // Fix: write to temp file and adb push — never interpolate key into shell command
+    const tmpFile = path.join(require('os').tmpdir(), 'clawwatch_prefs.xml');
+    const xml = `<?xml version="1.0" encoding="utf-8" standalone="yes" ?>\n<map>\n    <string name="anthropic_api_key">${key}</string>\n</map>\n`;
+    fs.writeFileSync(tmpFile, xml, { mode: 0o600 });
+    execSync(`adb push ${tmpFile} /sdcard/clawwatch_tmp.xml`);
+    execSync(`adb shell run-as ${PKG} sh -c 'mkdir -p /data/data/${PKG}/shared_prefs'`);
+    execSync(`adb shell run-as ${PKG} sh -c 'cp /sdcard/clawwatch_tmp.xml /data/data/${PKG}/shared_prefs/clawwatch_prefs.xml'`);
+    execSync(`adb shell rm /sdcard/clawwatch_tmp.xml`);
+    fs.unlinkSync(tmpFile);
+    res.json({ ok: true, message: 'API key pushed — restart ClawWatch on the watch' });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
