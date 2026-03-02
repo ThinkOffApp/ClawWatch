@@ -25,21 +25,19 @@ class ClawRunner(private val context: Context) {
     }
 
     private val filesDir get() = context.filesDir
-    private val binaryFile get() = File(filesDir, BINARY_NAME)
+    // Android W^X: execute from nativeLibraryDir (always executable), config in filesDir
+    private val binaryFile get() = File(context.applicationInfo.nativeLibraryDir, "libnullclaw.so")
     private val configFile get() = File(filesDir, CONFIG_NAME)
 
-    /** Copy binary and config from assets on first run only. Fix #3: never overwrite config. */
+    /** Copy config from assets on first run only. Binary lives in nativeLibraryDir. */
     suspend fun ensureInstalled() = withContext(Dispatchers.IO) {
-        if (!binaryFile.exists()) {
-            Log.i(TAG, "Installing NullClaw binary…")
-            context.assets.open(BINARY_NAME).use { it.copyTo(binaryFile.outputStream()) }
-            binaryFile.setExecutable(true)
-        }
-        // Fix #3: only copy config if it doesn't exist — preserve any on-device changes
+        // Binary is in nativeLibraryDir (always executable — no W^X issue)
+        Log.i(TAG, "NullClaw binary at ${binaryFile.absolutePath} (exists: ${binaryFile.exists()})")
+        // Only copy config if it doesn't exist — preserve any on-device changes
         if (!configFile.exists()) {
             context.assets.open(CONFIG_NAME).use { it.copyTo(configFile.outputStream()) }
         }
-        Log.i(TAG, "NullClaw ready at ${binaryFile.absolutePath}")
+        Log.i(TAG, "NullClaw ready")
     }
 
     fun saveApiKey(key: String) {
