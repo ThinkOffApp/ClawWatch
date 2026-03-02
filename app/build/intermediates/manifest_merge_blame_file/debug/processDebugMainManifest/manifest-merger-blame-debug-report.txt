@@ -1,0 +1,157 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.thinkoff.clawwatch"
+4    android:versionCode="1"
+5    android:versionName="0.1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="30"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:4:5-67
+11-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:4:22-64
+12    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+12-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:5:5-71
+12-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:5:22-68
+13    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+13-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:6:5-77
+13-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:6:22-74
+14    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+14-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:7:5-88
+14-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:7:22-85
+15    <uses-permission android:name="android.permission.WAKE_LOCK" />
+15-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:8:5-68
+15-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:8:22-65
+16
+17    <uses-feature android:name="android.hardware.type.watch" />
+17-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:10:5-64
+17-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:10:19-61
+18
+19    <permission
+19-->[androidx.core:core:1.13.1] /Users/petrus/.gradle/caches/8.13/transforms/0d1ceb0b608b64f1b15a4fa93c28a1c6/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
+20        android:name="com.thinkoff.clawwatch.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+20-->[androidx.core:core:1.13.1] /Users/petrus/.gradle/caches/8.13/transforms/0d1ceb0b608b64f1b15a4fa93c28a1c6/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
+21        android:protectionLevel="signature" />
+21-->[androidx.core:core:1.13.1] /Users/petrus/.gradle/caches/8.13/transforms/0d1ceb0b608b64f1b15a4fa93c28a1c6/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
+22
+23    <uses-permission android:name="com.thinkoff.clawwatch.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+23-->[androidx.core:core:1.13.1] /Users/petrus/.gradle/caches/8.13/transforms/0d1ceb0b608b64f1b15a4fa93c28a1c6/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
+23-->[androidx.core:core:1.13.1] /Users/petrus/.gradle/caches/8.13/transforms/0d1ceb0b608b64f1b15a4fa93c28a1c6/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
+24
+25    <application
+25-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:12:5-32:19
+26        android:allowBackup="false"
+26-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:13:9-36
+27        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+27-->[androidx.core:core:1.13.1] /Users/petrus/.gradle/caches/8.13/transforms/0d1ceb0b608b64f1b15a4fa93c28a1c6/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
+28        android:debuggable="true"
+29        android:extractNativeLibs="false"
+30        android:label="ClawWatch"
+30-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:14:9-34
+31        android:theme="@android:style/Theme.DeviceDefault" >
+31-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:15:9-59
+32        <activity
+32-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:17:9-25:20
+33            android:name="com.thinkoff.clawwatch.MainActivity"
+33-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:18:13-41
+34            android:exported="true"
+34-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:19:13-36
+35            android:launchMode="singleTop" >
+35-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:20:13-43
+36            <intent-filter>
+36-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:21:13-24:29
+37                <action android:name="android.intent.action.MAIN" />
+37-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:22:17-69
+37-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:22:25-66
+38
+39                <category android:name="android.intent.category.LAUNCHER" />
+39-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:23:17-77
+39-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:23:27-74
+40            </intent-filter>
+41        </activity>
+42
+43        <service
+43-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:27:9-30:40
+44            android:name="com.thinkoff.clawwatch.ClawService"
+44-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:28:13-40
+45            android:exported="false"
+45-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:30:13-37
+46            android:foregroundServiceType="microphone" />
+46-->/Users/petrus/AndroidStudioProjects/ClawWatch/app/src/main/AndroidManifest.xml:29:13-55
+47
+48        <uses-library
+48-->[androidx.wear:wear:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/96103b0bbae46d03a393226e15ac7e45/transformed/wear-1.3.0/AndroidManifest.xml:23:9-25:40
+49            android:name="com.google.android.wearable"
+49-->[androidx.wear:wear:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/96103b0bbae46d03a393226e15ac7e45/transformed/wear-1.3.0/AndroidManifest.xml:24:13-55
+50            android:required="false" />
+50-->[androidx.wear:wear:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/96103b0bbae46d03a393226e15ac7e45/transformed/wear-1.3.0/AndroidManifest.xml:25:13-37
+51
+52        <provider
+52-->[androidx.emoji2:emoji2:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/1f77b6daf3d45e33927c542bab89e331/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+53            android:name="androidx.startup.InitializationProvider"
+53-->[androidx.emoji2:emoji2:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/1f77b6daf3d45e33927c542bab89e331/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:25:13-67
+54            android:authorities="com.thinkoff.clawwatch.androidx-startup"
+54-->[androidx.emoji2:emoji2:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/1f77b6daf3d45e33927c542bab89e331/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:26:13-68
+55            android:exported="false" >
+55-->[androidx.emoji2:emoji2:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/1f77b6daf3d45e33927c542bab89e331/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:27:13-37
+56            <meta-data
+56-->[androidx.emoji2:emoji2:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/1f77b6daf3d45e33927c542bab89e331/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+57                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+57-->[androidx.emoji2:emoji2:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/1f77b6daf3d45e33927c542bab89e331/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:30:17-75
+58                android:value="androidx.startup" />
+58-->[androidx.emoji2:emoji2:1.3.0] /Users/petrus/.gradle/caches/8.13/transforms/1f77b6daf3d45e33927c542bab89e331/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:31:17-49
+59            <meta-data
+59-->[androidx.lifecycle:lifecycle-process:2.6.2] /Users/petrus/.gradle/caches/8.13/transforms/077f3c7132182435b48bdd088adf6a96/transformed/jetified-lifecycle-process-2.6.2/AndroidManifest.xml:29:13-31:52
+60                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+60-->[androidx.lifecycle:lifecycle-process:2.6.2] /Users/petrus/.gradle/caches/8.13/transforms/077f3c7132182435b48bdd088adf6a96/transformed/jetified-lifecycle-process-2.6.2/AndroidManifest.xml:30:17-78
+61                android:value="androidx.startup" />
+61-->[androidx.lifecycle:lifecycle-process:2.6.2] /Users/petrus/.gradle/caches/8.13/transforms/077f3c7132182435b48bdd088adf6a96/transformed/jetified-lifecycle-process-2.6.2/AndroidManifest.xml:31:17-49
+62            <meta-data
+62-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+63                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+63-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+64                android:value="androidx.startup" />
+64-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+65        </provider>
+66
+67        <receiver
+67-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+68            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+68-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+69            android:directBootAware="false"
+69-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+70            android:enabled="true"
+70-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+71            android:exported="true"
+71-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+72            android:permission="android.permission.DUMP" >
+72-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+73            <intent-filter>
+73-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+74                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+74-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+74-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+75            </intent-filter>
+76            <intent-filter>
+76-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+77                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+77-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+77-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+78            </intent-filter>
+79            <intent-filter>
+79-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+80                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+80-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+80-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+81            </intent-filter>
+82            <intent-filter>
+82-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+83                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+83-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+83-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/petrus/.gradle/caches/8.13/transforms/52bd1eed3597ce283f32805f344412bf/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+84            </intent-filter>
+85        </receiver>
+86    </application>
+87
+88</manifest>

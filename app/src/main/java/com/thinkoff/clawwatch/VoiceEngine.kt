@@ -82,9 +82,9 @@ class VoiceEngine(private val context: Context) {
                 val text = parseVoskPartial(hypothesis) ?: return
                 if (text.isNotBlank()) onPartial(text)
             }
-            override fun onFinalResult(hypothesis: String?) = onResult(hypothesis)
-            override fun onError(e: Exception?) = Log.e(TAG, "STT error", e)
-            override fun onTimeout() = Log.w(TAG, "STT timeout")
+            override fun onFinalResult(hypothesis: String?) { onResult(hypothesis) }
+            override fun onError(e: Exception?) { Log.e(TAG, "STT error", e) }
+            override fun onTimeout() { Log.w(TAG, "STT timeout") }
         })
     }
 

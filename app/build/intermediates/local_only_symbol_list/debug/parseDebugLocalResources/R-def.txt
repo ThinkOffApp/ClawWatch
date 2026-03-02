@@ -1,0 +1,12 @@
+R_DEF: Internal format may change without notice
+local
+id apiKeyInput
+id fab
+id mainPanel
+id queryText
+id responseText
+id saveKeyBtn
+id setupPanel
+id statusText
+id thinkingIndicator
+layout activity_main

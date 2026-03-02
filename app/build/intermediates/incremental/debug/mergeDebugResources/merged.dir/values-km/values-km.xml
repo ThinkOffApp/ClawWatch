@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:ns1="urn:oasis:names:tc:xliff:document:1.2" xmlns:ns2="http://schemas.android.com/tools">
+    <plurals name="mtrl_badge_content_description">
+    <item quantity="one">ការជូនដំណឹងថ្មី %d</item>
+    <item quantity="other">ការជូនដំណឹងថ្មី %d</item>
+  </plurals>
+    <string msgid="5976598919945601918" name="abc_action_bar_home_description">"​ទៅទំព័រដើម"</string>
+    <string msgid="8388173803310557296" name="abc_action_bar_up_description">"រំកិលឡើងលើ"</string>
+    <string msgid="3937310113216875497" name="abc_action_menu_overflow_description">"ជម្រើសច្រើនទៀត"</string>
+    <string msgid="4692188335987374352" name="abc_action_mode_done">"រួចរាល់"</string>
+    <string msgid="1189761859438369441" name="abc_activity_chooser_view_see_all">"មើលទាំងអស់"</string>
+    <string msgid="2165779757652331008" name="abc_activitychooserview_choose_application">"ជ្រើសរើស​កម្មវិធី​​"</string>
+    <string msgid="4215997306490295099" name="abc_capital_off">"បិទ"</string>
+    <string msgid="884982626291842264" name="abc_capital_on">"បើក"</string>
+    <string msgid="8833365367933412986" name="abc_menu_alt_shortcut_label">"Alt+"</string>
+    <string msgid="2223301931652355242" name="abc_menu_ctrl_shortcut_label">"Ctrl+"</string>
+    <string msgid="838001238306846836" name="abc_menu_delete_shortcut_label">"លុប"</string>
+    <string msgid="7986526966204849475" name="abc_menu_enter_shortcut_label">"enter"</string>
+    <string msgid="375214403600139847" name="abc_menu_function_shortcut_label">"Function+"</string>
+    <string msgid="4192209724446364286" name="abc_menu_meta_shortcut_label">"Meta+"</string>
+    <string msgid="4741552369836443843" name="abc_menu_shift_shortcut_label">"Shift+"</string>
+    <string msgid="5473865519181928982" name="abc_menu_space_shortcut_label">"space"</string>
+    <string msgid="6180552449598693998" name="abc_menu_sym_shortcut_label">"Sym+"</string>
+    <string msgid="5520303668377388990" name="abc_prepend_shortcut_label">"Menu+"</string>
+    <string msgid="7208076849092622260" name="abc_search_hint">"ស្វែងរក…"</string>
+    <string msgid="3741173234950517107" name="abc_searchview_description_clear">"សម្អាត​សំណួរ"</string>
+    <string msgid="693312494995508443" name="abc_searchview_description_query">"ស្វែងរកសំណួរ​"</string>
+    <string msgid="3417662926640357176" name="abc_searchview_description_search">"ស្វែងរក"</string>
+    <string msgid="1486535517437947103" name="abc_searchview_description_submit">"ដាក់បញ្ជូន​សំណួរ"</string>
+    <string msgid="2293578557972875415" name="abc_searchview_description_voice">"ស្វែងរក​តាម​សំឡេង"</string>
+    <string msgid="8875138169939072951" name="abc_shareactionprovider_share_with">"ចែករំលែក​ជា​មួយ"</string>
+    <string msgid="9055268688411532828" name="abc_shareactionprovider_share_with_application">"ចែក​រំលែក​ជា​មួយ <ns1:g id="APPLICATION_NAME">%s</ns1:g>"</string>
+    <string msgid="1656852541809559762" name="abc_toolbar_collapse_description">"បង្រួម"</string>
+    <string name="bottomsheet_action_collapse">បង្រួមសន្លឹក​ខាងក្រោម</string>
+    <string name="bottomsheet_action_expand">ពង្រីកសន្លឹក​ខាងក្រោម</string>
+    <string name="bottomsheet_action_expand_halfway">ពង្រីក​ពាក់កណ្ដាល</string>
+    <string name="bottomsheet_drag_handle_clicked">បានប៉ះដង​អូស​ពីរដង</string>
+    <string name="bottomsheet_drag_handle_content_description">ដង​អូស</string>
+    <string msgid="7032918537319714491" name="buttons_rect_bottom_center">"ខាងក្រោម"</string>
+    <string msgid="1900303277997254019" name="buttons_rect_bottom_left">"ខាងក្រោម​ផ្នែក​ខាងឆ្វេង"</string>
+    <string msgid="5128261908141175352" name="buttons_rect_bottom_right">"ខាងក្រោម​ផ្នែក​ខាងស្ដាំ"</string>
+    <string msgid="2890382227404669440" name="buttons_rect_left_bottom">"ខាងក្រោម ផ្នែកខាងឆ្វេង"</string>
+    <string msgid="2090348335774325845" name="buttons_rect_left_center">"កណ្ដាល​ផ្នែកខាងឆ្វេង"</string>
+    <string msgid="5658240954637179416" name="buttons_rect_left_top">"ខាងលើ ផ្នែកខាងឆ្វេង"</string>
+    <string msgid="231110280868923853" name="buttons_rect_right_bottom">"ខាងក្រោម ផ្នែកខាងស្ដាំ"</string>
+    <string msgid="9046922334870476704" name="buttons_rect_right_center">"កណ្ដាល​ផ្នែកខាងស្ដាំ"</string>
+    <string msgid="8781047384037217975" name="buttons_rect_right_top">"ខាងលើ ផ្នែកខាងស្ដាំ"</string>
+    <string msgid="79705740801041383" name="buttons_rect_top_center">"ខាងលើ"</string>
+    <string msgid="7572206729575579647" name="buttons_rect_top_left">"ខាងលើ​ផ្នែក​ខាងឆ្វេង"</string>
+    <string msgid="942888900599091776" name="buttons_rect_top_right">"ខាងលើ​ផ្នែក​ខាងស្ដាំ​"</string>
+    <string msgid="7330585893633364324" name="buttons_round_bottom_center">"ខាងក្រោម"</string>
+    <string msgid="2128239325315047486" name="buttons_round_bottom_left">"ខាងក្រោម​ផ្នែក​ខាងឆ្វេង"</string>
+    <string msgid="8840562761052904241" name="buttons_round_bottom_left_lower">"ខាងក្រោមផ្នែកខាងឆ្វេងទាប"</string>
+    <string msgid="5824161271890322696" name="buttons_round_bottom_left_upper">"ខាងក្រោមផ្នែកខាងឆ្វេងខ្ពស់"</string>
+    <string msgid="2377403938095293895" name="buttons_round_bottom_right">"ខាងក្រោម​ផ្នែក​ខាងស្ដាំ"</string>
+    <string msgid="6450671993962362349" name="buttons_round_bottom_right_lower">"ខាងក្រោមផ្នែកខាងស្ដាំទាប"</string>
+    <string msgid="3762205785832512542" name="buttons_round_bottom_right_upper">"ខាងក្រោមផ្នែកខាងស្ដាំខ្ពស់"</string>
+    <string msgid="4851687456301428363" name="buttons_round_center_left">"កណ្ដាល​ផ្នែកខាងឆ្វេង"</string>
+    <string msgid="1509579668330531551" name="buttons_round_center_right">"កណ្ដាល​ផ្នែកខាងស្ដាំ"</string>
+    <string msgid="5559087816427379703" name="buttons_round_top_center">"ខាងលើ"</string>
+    <string msgid="6011962751086201079" name="buttons_round_top_left">"ខាងលើ​ផ្នែក​ខាងឆ្វេង"</string>
+    <string msgid="4749025344320804614" name="buttons_round_top_left_lower">"ខាងលើផ្នែកខាងឆ្វេងទាប"</string>
+    <string msgid="2546930425604677415" name="buttons_round_top_left_upper">"ខាងលើផ្នែកខាងឆ្វេងខ្ពស់"</string>
+    <string msgid="4871780374047139328" name="buttons_round_top_right">"ខាងលើ​ផ្នែក​ខាងស្ដាំ​"</string>
+    <string msgid="49744844591556337" name="buttons_round_top_right_lower">"ខាងលើផ្នែកខាងស្ដាំទាប"</string>
+    <string msgid="5489914740902966147" name="buttons_round_top_right_upper">"ខាងលើផ្នែកខាងស្ដាំខ្ពស់"</string>
+    <string msgid="881409763997275156" name="call_notification_answer_action">"ឆ្លើយ"</string>
+    <string msgid="8793775615905189152" name="call_notification_answer_video_action">"វីដេអូ"</string>
+    <string msgid="3229508546291798546" name="call_notification_decline_action">"បដិសេធ"</string>
+    <string msgid="2659457946726154263" name="call_notification_hang_up_action">"ដាក់​ចុះ"</string>
+    <string msgid="6107532579223922871" name="call_notification_incoming_text">"ការ​ហៅ​ចូល"</string>
+    <string msgid="8623827134497363134" name="call_notification_ongoing_text">"ការ​ហៅដែលកំពុងដំណើរការ"</string>
+    <string msgid="59049573811482460" name="call_notification_screening_text">"កំពុងពិនិត្យការ​ហៅ​ចូល"</string>
+    <string name="character_counter_content_description">តួ​អក្សរ​បាន​បញ្ចូល​ %1$d នៃ %2$d</string>
+    <string name="character_counter_overflowed_content_description">ដែនកំណត់តួអក្សរបានលើស %1$d នៃ %2$d</string>
+    <string name="clear_text_end_icon_content_description">សម្អាតអក្សរ</string>
+    <string msgid="6412144553299494336" name="confirmation_overlay_a11y_description_fail">"បរាជ័យ"</string>
+    <string msgid="8809042819843332546" name="confirmation_overlay_a11y_description_phone">"បានបើក​នៅលើ​ទូរសព្ទ​របស់អ្នក"</string>
+    <string msgid="2936753235333429892" name="confirmation_overlay_a11y_description_success">"ជោគជ័យ"</string>
+    <string name="error_a11y_label">បញ្ហា៖ មិនត្រឹមត្រូវ</string>
+    <string name="error_icon_content_description">បញ្ហា</string>
+    <string name="exposed_dropdown_menu_content_description">បង្ហាញ​ម៉ឺនុយ​ធ្លាក់ចុះ</string>
+    <string name="icon_content_description">រូប​ប្រអប់បញ្ចូល</string>
+    <string name="item_view_role_description">ផ្ទាំង</string>
+    <string name="material_clock_toggle_content_description">ជ្រើសរើស AM ឬ PM</string>
+    <string name="material_hour_24h_suffix">%1$s ម៉ោង</string>
+    <string name="material_hour_selection">ជ្រើសរើសម៉ោង</string>
+    <string name="material_hour_suffix">ម៉ោង %1$s</string>
+    <string name="material_minute_selection">ជ្រើស​នាទី</string>
+    <string name="material_minute_suffix">%1$s នាទី</string>
+    <string name="material_timepicker_am">ព្រឹក</string>
+    <string name="material_timepicker_clock_mode_description">ប្តូរ​ទៅ​មុខងារ​នាឡិកា​សម្រាប់​ការ​បញ្ចូល​ម៉ោង។</string>
+    <string name="material_timepicker_hour">ម៉ោង</string>
+    <string name="material_timepicker_minute">នាទី​</string>
+    <string name="material_timepicker_pm">ល្ងាច</string>
+    <string name="material_timepicker_select_time">ជ្រើស​ម៉ោង</string>
+    <string name="material_timepicker_text_input_mode_description">ប្តូរ​ទៅ​មុខងារ​បញ្ចូល​អក្សរ​សម្រាប់​ការ​បញ្ចូល​ម៉ោង។</string>
+    <string name="mtrl_badge_numberless_content_description">ការជូនដំណឹងថ្មី</string>
+    <string name="mtrl_checkbox_state_description_checked">បាន​ធីក</string>
+    <string name="mtrl_checkbox_state_description_indeterminate">បានធីកខ្លះ</string>
+    <string name="mtrl_checkbox_state_description_unchecked">មិន​បាន​ធីក</string>
+    <string name="mtrl_chip_close_icon_content_description">លុប %1$s</string>
+    <string name="mtrl_exceed_max_badge_number_content_description" ns2:ignore="PluralsCandidate">ការជូនដំណឹង​ថ្មីៗ​លើស %1$d ហើយ</string>
+    <string name="mtrl_picker_a11y_next_month">ប្ដូរ​ទៅ​ខែបន្ទាប់</string>
+    <string name="mtrl_picker_a11y_prev_month">ប្ដូរ​ទៅ​ខែមុន</string>
+    <string name="mtrl_picker_announce_current_range_selection">ការជ្រើសរើស​កាលបរិច្ឆេទចាប់ផ្ដើម៖ %1$s – ការជ្រើសរើស​កាលបរិច្ឆេទបញ្ចប់៖ %2$s</string>
+    <string name="mtrl_picker_announce_current_selection">ការជ្រើសរើស​បច្ចុប្បន្ន៖ %1$s</string>
+    <string name="mtrl_picker_announce_current_selection_none">គ្មាន</string>
+    <string name="mtrl_picker_cancel">បោះ​បង់</string>
+    <string name="mtrl_picker_confirm">យល់ព្រម</string>
+    <string name="mtrl_picker_date_header_selected">%1$s</string>
+    <string name="mtrl_picker_date_header_title">ជ្រើសរើស​កាល​បរិច្ឆេទ</string>
+    <string name="mtrl_picker_date_header_unselected">កាលបរិច្ឆេទដែលបាន​ជ្រើសរើស</string>
+    <string name="mtrl_picker_day_of_week_column_header">%1$s</string>
+    <string name="mtrl_picker_end_date_description">កាលបរិច្ឆេទ​បញ្ចប់ %1$s</string>
+    <string name="mtrl_picker_invalid_format">ទម្រង់មិន​ត្រឹមត្រូវទេ។</string>
+    <string name="mtrl_picker_invalid_format_example">ឧទាហរណ៍៖ %1$s</string>
+    <string name="mtrl_picker_invalid_format_use">ប្រើ៖ %1$s</string>
+    <string name="mtrl_picker_invalid_range">ជួរ​មិនត្រឹមត្រូវទេ។</string>
+    <string name="mtrl_picker_navigate_to_current_year_description">រុករក​ទៅកាន់​ឆ្នាំបច្ចុប្បន្ន %1$d</string>
+    <string name="mtrl_picker_navigate_to_year_description">ប្ដូរទៅ​ឆ្នាំ %1$d</string>
+    <string name="mtrl_picker_out_of_range">នៅក្រៅ​ចន្លោះ៖ %1$s</string>
+    <string name="mtrl_picker_range_header_only_end_selected">កាលបរិច្ឆេទ​ចាប់ផ្ដើម – %1$s</string>
+    <string name="mtrl_picker_range_header_only_start_selected">%1$s – កាលបរិច្ឆេទ​បញ្ចប់</string>
+    <string name="mtrl_picker_range_header_selected">%1$s – %2$s</string>
+    <string name="mtrl_picker_range_header_title">ជ្រើស​រើស​ចន្លោះ</string>
+    <string name="mtrl_picker_range_header_unselected">កាលបរិច្ឆេទ​ចាប់ផ្ដើម – កាលបរិច្ឆេទ​បញ្ចប់</string>
+    <string name="mtrl_picker_save">រក្សាទុក</string>
+    <string name="mtrl_picker_start_date_description">កាលបរិច្ឆេទ​ចាប់ផ្ដើម %1$s</string>
+    <string name="mtrl_picker_text_input_date_hint">កាលបរិច្ឆេទ</string>
+    <string name="mtrl_picker_text_input_date_range_end_hint">កាល​បរិច្ឆេទ​បញ្ចប់</string>
+    <string name="mtrl_picker_text_input_date_range_start_hint">កាល​បរិច្ឆេទ​ចាប់ផ្ដើម</string>
+    <string name="mtrl_picker_text_input_day_abbr">ថ</string>
+    <string name="mtrl_picker_text_input_month_abbr">ខ</string>
+    <string name="mtrl_picker_text_input_year_abbr">ឆ</string>
+    <string name="mtrl_picker_today_description">ថ្ងៃនេះ %1$s</string>
+    <string name="mtrl_picker_toggle_to_calendar_input_mode">ប្ដូរទៅ​របៀប​បញ្ចូល​ប្រតិទិន</string>
+    <string name="mtrl_picker_toggle_to_day_selection">ចុច ដើម្បីប្ដូរទៅទិដ្ឋភាពប្រតិទិន</string>
+    <string name="mtrl_picker_toggle_to_text_input_mode">ប្ដូរទៅ​របៀប​បញ្ចូល​អក្សរ</string>
+    <string name="mtrl_picker_toggle_to_year_selection">ចុច ដើម្បីប្ដូរទៅទិដ្ឋភាពឆ្នាំ</string>
+    <string name="mtrl_timepicker_cancel">បោះបង់</string>
+    <string name="mtrl_timepicker_confirm">យល់ព្រម</string>
+    <string name="password_toggle_content_description">បង្ហាញពាក្យសម្ងាត់</string>
+    <string msgid="6264217191555673260" name="search_menu_title">"ស្វែងរក"</string>
+    <string name="searchview_clear_text_content_description">សម្អាតអក្សរ</string>
+    <string name="searchview_navigation_content_description">ថយក្រោយ</string>
+    <string name="side_sheet_accessibility_pane_title">សន្លឹកចំហៀង</string>
+    <string msgid="6277540029070332960" name="status_bar_notification_info_overflow">"999+"</string>
+    <string msgid="8863821639144537553" name="ws_action_drawer_content_description">"ថត​សកម្មភាព"</string>
+    <string msgid="777117228299084604" name="ws_navigation_drawer_content_description">"ថត​រុករក"</string>
+</resources>
