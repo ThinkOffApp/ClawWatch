@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.thinkoff.clawwatch.databinding.ActivityMainBinding
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -61,8 +60,9 @@ class MainActivity : AppCompatActivity() {
         clawRunner.ensureInstalled()
         voiceEngine.initTts()
 
+        // Fix #4: block in SETUP state so tap does nothing until key is set
         if (!clawRunner.hasApiKey()) {
-            setState(State.IDLE)
+            setState(State.SETUP)
             setStatus("No key — run set_key.sh")
             return
         }
@@ -132,12 +132,14 @@ class MainActivity : AppCompatActivity() {
                     binding.responseText.text = response
                     setState(State.SPEAKING)
                     setStatus("Speaking…")
-                    voiceEngine.speak(response)
-                    // Estimate TTS duration, then return to idle
-                    delay(response.length * 55L + 1000L)
-                    if (state == State.SPEAKING) {
-                        setState(State.IDLE)
-                        setStatus("Tap to talk")
+                    // Fix #6: use UtteranceProgressListener.onDone() not heuristic delay
+                    voiceEngine.speak(response) {
+                        runOnUiThread {
+                            if (state == State.SPEAKING) {
+                                setState(State.IDLE)
+                                setStatus("Tap to talk")
+                            }
+                        }
                     }
                 },
                 onFailure = { err ->

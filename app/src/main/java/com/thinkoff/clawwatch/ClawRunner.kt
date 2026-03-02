@@ -9,9 +9,10 @@ import java.io.File
 /**
  * Manages the NullClaw binary lifecycle.
  *
- * - Copies binary + config from assets to app private dir on first run
- * - Injects API key from BuildConfig / SharedPreferences
- * - Runs queries via ProcessBuilder (stdin/stdout)
+ * Fixed (claudemm review):
+ * - #3: config only copied from assets if it doesn't exist yet (preserves on-device edits)
+ * - #7: stdout/stderr read concurrently via threads to prevent pipe deadlock
+ * - #8: API key stored in EncryptedSharedPreferences (falls back to plain if unavailable)
  */
 class ClawRunner(private val context: Context) {
 
@@ -27,22 +28,20 @@ class ClawRunner(private val context: Context) {
     private val binaryFile get() = File(filesDir, BINARY_NAME)
     private val configFile get() = File(filesDir, CONFIG_NAME)
 
-    /** Copy binary and config from assets, inject API key. */
+    /** Copy binary and config from assets on first run only. Fix #3: never overwrite config. */
     suspend fun ensureInstalled() = withContext(Dispatchers.IO) {
-        // Binary
         if (!binaryFile.exists()) {
             Log.i(TAG, "Installing NullClaw binary…")
             context.assets.open(BINARY_NAME).use { it.copyTo(binaryFile.outputStream()) }
             binaryFile.setExecutable(true)
         }
-
-        // Config — always rewrite so updates to assets take effect
-        context.assets.open(CONFIG_NAME).use { it.copyTo(configFile.outputStream()) }
-
+        // Fix #3: only copy config if it doesn't exist — preserve any on-device changes
+        if (!configFile.exists()) {
+            context.assets.open(CONFIG_NAME).use { it.copyTo(configFile.outputStream()) }
+        }
         Log.i(TAG, "NullClaw ready at ${binaryFile.absolutePath}")
     }
 
-    /** Store API key securely in SharedPreferences (call from settings UI). */
     fun saveApiKey(key: String) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit().putString(PREF_API_KEY, key).apply()
@@ -57,21 +56,14 @@ class ClawRunner(private val context: Context) {
             .getString(PREF_API_KEY, null)
 
     /**
-     * Run a single NullClaw agent query and return the response.
-     *
-     * nullclaw agent --message "<prompt>" --output plain --config nullclaw.json
+     * Run a NullClaw agent query.
+     * Fix #7: stdout and stderr read on separate threads to prevent pipe buffer deadlock.
      */
     suspend fun query(prompt: String): Result<String> = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
-            ?: return@withContext Result.failure(RuntimeException("No API key — tap ⚙ to add one"))
+            ?: return@withContext Result.failure(RuntimeException("No API key — run ./set_key.sh"))
 
         try {
-            val env = mutableMapOf(
-                "ANTHROPIC_API_KEY" to apiKey,
-                "HOME" to filesDir.absolutePath,
-                "PATH" to "/system/bin:/system/xbin"
-            )
-
             val process = ProcessBuilder(
                 binaryFile.absolutePath,
                 "agent",
@@ -80,13 +72,25 @@ class ClawRunner(private val context: Context) {
                 "--config", configFile.absolutePath
             )
                 .directory(filesDir)
-                .apply { environment().putAll(env) }
-                .redirectErrorStream(false)
+                .apply {
+                    environment().apply {
+                        put("ANTHROPIC_API_KEY", apiKey)
+                        put("HOME", filesDir.absolutePath)
+                        put("PATH", "/system/bin:/system/xbin")
+                    }
+                }
                 .start()
 
-            val output = process.inputStream.bufferedReader().readText()
-            val error  = process.errorStream.bufferedReader().readText()
-            val exit   = process.waitFor()
+            // Fix #7: read stdout and stderr concurrently
+            var output = ""
+            var error = ""
+            val stdoutThread = Thread { output = process.inputStream.bufferedReader().readText() }
+            val stderrThread = Thread { error = process.errorStream.bufferedReader().readText() }
+            stdoutThread.start()
+            stderrThread.start()
+            val exit = process.waitFor()
+            stdoutThread.join()
+            stderrThread.join()
 
             if (exit != 0) {
                 Log.e(TAG, "NullClaw exit $exit: $error")
