@@ -62,6 +62,8 @@ class MainActivity : AppCompatActivity() {
     private var isAutoListenWindow = false
     private var countdownAnimator: ValueAnimator? = null
     private var avatarAnimator: ValueAnimator? = null
+    private var speakingPreviewJob: Job? = null
+    private var lastPartialStatusAt = 0L
     private var avatarSwipeStartX = 0f
     private var avatarSwipeStartY = 0f
     private var avatarSwipeActive = false
@@ -178,6 +180,7 @@ class MainActivity : AppCompatActivity() {
             State.THINKING, State.SEARCHING, State.SPEAKING -> {
                 interactionToken++
                 cancelAutoListenWindow()
+                stopSpeakingPreview()
                 queryJob?.cancel()
                 queryJob = null
                 voiceEngine.stopListening()
@@ -195,7 +198,9 @@ class MainActivity : AppCompatActivity() {
         queryJob?.cancel()
         queryJob = null
         cancelAutoListenWindow()
+        stopSpeakingPreview()
         voiceEngine.stopSpeaking()
+        lastPartialStatusAt = 0L
         isAutoListenWindow = autoWindow
         setState(State.LISTENING)
         setStatus(if (autoWindow) "Listening (follow-up)…" else "Listening…")
@@ -216,6 +221,9 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     if (token != interactionToken || consumed) return@runOnUiThread
                     if (isAutoListenWindow && partial.isNotBlank()) cancelAutoListenWindow()
+                    val now = SystemClock.elapsedRealtime()
+                    if (now - lastPartialStatusAt < 250L) return@runOnUiThread
+                    lastPartialStatusAt = now
                     setStatus(partial)
                 }
             }
@@ -235,7 +243,7 @@ class MainActivity : AppCompatActivity() {
                     if (token != interactionToken) return@fold
                     binding.responseText.text = response
                     setState(State.SPEAKING)
-                    setStatus("Speaking…")
+                    startSpeakingPreview(response)
                     voiceEngine.speak(response) {
                         runOnUiThread {
                             if (token == interactionToken && state == State.SPEAKING) {
@@ -246,6 +254,7 @@ class MainActivity : AppCompatActivity() {
                 },
                 onFailure = { err ->
                     if (token != interactionToken) return@fold
+                    stopSpeakingPreview()
                     val msg = err.message ?: "Error"
                     setStatus(msg)
                     setState(State.ERROR)
@@ -463,6 +472,33 @@ class MainActivity : AppCompatActivity() {
         binding.autoListenCountdown.visibility = View.GONE
     }
 
+    private fun startSpeakingPreview(fullText: String) {
+        stopSpeakingPreview()
+        val clean = formatStatus(fullText)
+        if (clean.isBlank()) {
+            setStatus("Speaking…")
+            return
+        }
+        if (isLowBattery()) {
+            setStatus(clean)
+            return
+        }
+        speakingPreviewJob = lifecycleScope.launch {
+            var count = 0
+            while (count < clean.length && state == State.SPEAKING) {
+                count = minOf(clean.length, count + 8)
+                setStatus(clean.substring(0, count))
+                delay(250L)
+            }
+            if (state == State.SPEAKING) setStatus(clean)
+        }
+    }
+
+    private fun stopSpeakingPreview() {
+        speakingPreviewJob?.cancel()
+        speakingPreviewJob = null
+    }
+
     private fun setState(s: State) {
         state = s
         runOnUiThread {
@@ -494,15 +530,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateActionIndicator(s: State) {
         binding.actionIndicator.text = when (s) {
-            State.IDLE -> "·"
+            State.IDLE -> ""
             State.LISTENING -> "👂"
-            State.THINKING -> "💭"
-            State.SEARCHING -> "🔎"
-            State.SPEAKING -> "💬"
+            State.THINKING, State.SEARCHING -> "☁️"
+            State.SPEAKING -> "⋯"
             State.ERROR -> "⚠️"
             State.SETUP -> ""
         }
-        binding.actionIndicator.visibility = if (s == State.SETUP) View.INVISIBLE else View.VISIBLE
+        binding.actionIndicator.visibility = if (s == State.SETUP || s == State.IDLE) View.INVISIBLE else View.VISIBLE
     }
 
     private fun applyConversationScreenPolicy(state: State) {
@@ -518,12 +553,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setStatus(msg: String) = runOnUiThread { binding.statusText.text = msg }
+    private fun formatStatus(msg: String): String =
+        msg.trim().replace(Regex("\\s+"), " ").take(160)
+
+    private fun setStatus(msg: String) = runOnUiThread { binding.statusText.text = formatStatus(msg) }
 
     override fun onDestroy() {
         super.onDestroy()
         cancelAutoListenWindow()
         stopAvatarAnimation()
+        stopSpeakingPreview()
         queryJob?.cancel()
         voiceEngine.release()
     }

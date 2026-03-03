@@ -96,21 +96,28 @@
         android:padding="12dp"
         android:visibility="gone">
 
-        <!-- Hidden debug/status text; main UX is avatar + adaptive button only -->
         <TextView
             android:id="@+id/statusText"
-            android:layout_width="1dp"
-            android:layout_height="1dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:text="Starting…"
-            android:textColor="#00000000"
-            android:textSize="1sp"
+            android:textColor="#D4A5E9"
+            android:textSize="12sp"
             android:gravity="center"
-            android:visibility="invisible" />
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:background="@drawable/live_text_bg"
+            android:layout_marginBottom="8dp" />
 
         <FrameLayout
             android:id="@+id/avatarContainer"
-            android:layout_width="112dp"
-            android:layout_height="112dp"
+            android:layout_width="124dp"
+            android:layout_height="124dp"
             android:layout_marginBottom="12dp">
 
             <TextView
@@ -120,19 +127,20 @@
                 android:gravity="center"
                 android:text="🐜"
                 android:textColor="#D4A5E9"
-                android:textSize="60sp" />
+                android:textSize="72sp" />
 
             <TextView
                 android:id="@+id/actionIndicator"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:layout_gravity="end|top"
-                android:layout_marginTop="16dp"
-                android:layout_marginEnd="6dp"
+                android:layout_marginTop="14dp"
+                android:layout_marginEnd="4dp"
                 android:gravity="center"
                 android:text="◎"
                 android:textColor="#D4A5E9"
-                android:textSize="15sp" />
+                android:textSize="24sp"
+                android:includeFontPadding="false" />
         </FrameLayout>
 
         <FrameLayout
