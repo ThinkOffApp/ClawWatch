@@ -1,6 +1,6 @@
 <p align="center">
   <a href="assets/videos/clawwatch-launch-1.0.0.mp4">
-    <img src="assets/screenshots/watch-03.png" alt="ClawWatch 1.0.0 launch video" width="180">
+    <img src="assets/videos/clawwatch-launch-1.0.0-preview.gif" alt="ClawWatch 1.0.0 launch video preview" width="220">
   </a>
 </p>
 <p align="center">
