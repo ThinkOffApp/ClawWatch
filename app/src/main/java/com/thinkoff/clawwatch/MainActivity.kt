@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "ClawWatch"
         private const val FAB_DEBOUNCE_MS = 300L
         private const val AUTO_LISTEN_WINDOW_MS = 3500L
+        private const val AVATAR_SWIPE_THRESHOLD_DP = 24f
         private const val PREF_RAG_MODE = "rag_mode"
         private const val PREF_AVATAR_TYPE = "avatar_type"
         private const val ACCENT_COLOR = 0xFFD4A5E9.toInt()
@@ -64,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private var avatarAnimator: ValueAnimator? = null
     private var avatarSwipeStartX = 0f
     private var avatarSwipeStartY = 0f
+    private var avatarSwipeActive = false
 
     private val requestMic = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -266,30 +268,51 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun currentAvatarType(): AvatarType {
-        return when ((prefs.getString(PREF_AVATAR_TYPE, "ant") ?: "ant").lowercase()) {
+        return when ((prefs.getString(PREF_AVATAR_TYPE, "lobster") ?: "lobster").lowercase()) {
             "lobster" -> AvatarType.LOBSTER
             "robot" -> AvatarType.ROBOT
             "boy" -> AvatarType.BOY
             "girl" -> AvatarType.GIRL
-            else -> AvatarType.ANT
+            "ant" -> AvatarType.ANT
+            else -> AvatarType.LOBSTER
         }
     }
 
     private fun setupAvatarSwipeSwitch() {
-        binding.avatarContainer.setOnTouchListener { _, event ->
+        val threshold = AVATAR_SWIPE_THRESHOLD_DP * resources.displayMetrics.density
+        binding.avatarContainer.isClickable = true
+        binding.avatarContainer.setOnTouchListener { view, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     avatarSwipeStartX = event.x
                     avatarSwipeStartY = event.y
+                    avatarSwipeActive = true
+                    view.parent?.requestDisallowInterceptTouchEvent(true)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!avatarSwipeActive) return@setOnTouchListener false
+                    val dx = event.x - avatarSwipeStartX
+                    val dy = event.y - avatarSwipeStartY
+                    if (abs(dx) > threshold / 2 && abs(dx) > abs(dy)) {
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
+                    if (!avatarSwipeActive) return@setOnTouchListener false
+                    avatarSwipeActive = false
                     val dx = event.x - avatarSwipeStartX
                     val dy = event.y - avatarSwipeStartY
-                    val threshold = 28f * resources.displayMetrics.density
                     if (abs(dx) > threshold && abs(dx) > abs(dy) * 1.2f) {
                         if (dx > 0) previousAvatarType() else nextAvatarType()
                     }
+                    view.parent?.requestDisallowInterceptTouchEvent(false)
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    avatarSwipeActive = false
+                    view.parent?.requestDisallowInterceptTouchEvent(false)
                     true
                 }
                 else -> true
