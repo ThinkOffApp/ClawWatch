@@ -124,30 +124,33 @@
         </FrameLayout>
 
         <FrameLayout
-            android:layout_width="72dp"
-            android:layout_height="72dp">
+            android:layout_width="60dp"
+            android:layout_height="60dp">
 
             <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/autoListenCountdown"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
                 android:layout_gravity="center"
                 android:max="100"
                 android:visibility="gone"
                 app:indicatorColor="#D4A5E9"
-                app:indicatorSize="72dp"
-                app:trackColor="#304050"
-                app:trackThickness="4dp" />
+                app:indicatorSize="60dp"
+                app:trackColor="#00000000"
+                app:trackThickness="3dp" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fab"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:elevation="0dp"
                 android:contentDescription="Tap to talk"
+                app:borderWidth="0dp"
+                app:fabSize="mini"
                 app:srcCompat="@android:drawable/ic_btn_speak_now"
                 app:backgroundTint="#D4A5E9"
-                app:fabSize="normal" />
+                app:pressedTranslationZ="0dp" />
         </FrameLayout>
 
         <!-- Legacy bound views kept hidden for compatibility -->
