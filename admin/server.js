@@ -168,6 +168,7 @@ app.post('/api/deploy', (req, res) => {
 });
 
 const PORT = 4747;
-app.listen(PORT, () => {
+const HOST = '127.0.0.1'; // localhost only — not exposed to network
+app.listen(PORT, HOST, () => {
   console.log(`ClawWatch Admin → http://localhost:${PORT}`);
 });

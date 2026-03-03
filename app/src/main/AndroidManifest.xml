@@ -14,6 +14,7 @@
         android:label="ClawWatch"
         android:icon="@mipmap/ic_launcher"
         android:extractNativeLibs="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.AppCompat.NoActionBar">
 
         <activity
@@ -34,7 +35,8 @@
         <!-- Receives config sync from companion phone app via Wearable Data Layer -->
         <service
             android:name=".ConfigSyncService"
-            android:exported="true">
+            android:exported="true"
+            android:permission="com.google.android.gms.permission.BIND_LISTENER">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <data

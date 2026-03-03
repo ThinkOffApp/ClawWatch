@@ -60,7 +60,7 @@ class ConfigSyncService : WearableListenerService() {
                             runner.saveMaxTokens(json.getInt("max_tokens"))
                         json.optString("rag_mode").takeIf { it.isNotBlank() }
                             ?.let { runner.saveRagMode(it) }
-                        Log.i(TAG, "Config synced from phone: $payload")
+                        Log.i(TAG, "Config synced from phone (model=${json.optString("model")}, rag=${json.optString("rag_mode")})")
                     } catch (e: Exception) {
                         Log.e(TAG, "Config parse error: ${e.message}")
                     }
