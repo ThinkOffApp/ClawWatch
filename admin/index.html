@@ -13,146 +13,77 @@
     min-height: 100vh;
     padding: 2rem;
   }
-  header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
+  header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
   header h1 { font-size: 1.5rem; font-weight: 700; color: #fff; }
   header h1 span { color: #d4a5e9; }
   .watch-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.35rem 0.8rem;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 600;
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.35rem 0.8rem; border-radius: 999px;
+    font-size: 0.8rem; font-weight: 600;
     border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    margin-left: auto;
+    background: rgba(255,255,255,0.04); margin-left: auto;
   }
-  .dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #6b7280;
-  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; }
   .dot.connected { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    max-width: 900px;
-  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 960px; }
   @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
   .card {
     background: rgba(20, 20, 35, 0.8);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: 16px; padding: 1.5rem;
   }
   .card h2 {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #6b7280;
-    margin-bottom: 1rem;
+    font-size: 0.75rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: #6b7280; margin-bottom: 1rem;
   }
-  label {
-    display: block;
-    font-size: 0.8rem;
-    color: #9ca3af;
-    margin-bottom: 0.3rem;
-    margin-top: 0.75rem;
-  }
+  label { display: block; font-size: 0.8rem; color: #9ca3af; margin-bottom: 0.3rem; margin-top: 0.75rem; }
   label:first-of-type { margin-top: 0; }
   input, select, textarea {
-    width: 100%;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    color: #fff;
-    font-size: 0.9rem;
-    padding: 0.6rem 0.75rem;
-    outline: none;
-    transition: border-color 0.2s;
-    font-family: inherit;
+    width: 100%; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    color: #fff; font-size: 0.9rem; padding: 0.6rem 0.75rem;
+    outline: none; transition: border-color 0.2s; font-family: inherit;
   }
-  input:focus, select:focus, textarea:focus {
-    border-color: #d4a5e9;
-  }
+  input:focus, select:focus, textarea:focus { border-color: #d4a5e9; }
   select option { background: #1a1a2e; }
-  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
-  .token-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-  }
+  textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
+  .token-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
   .token-row input { flex: 1; }
-  .token-val {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #d4a5e9;
-    min-width: 36px;
-    text-align: right;
-  }
-  input[type=range] {
-    padding: 0;
-    cursor: pointer;
-    accent-color: #d4a5e9;
-  }
+  .token-val { font-size: 1rem; font-weight: 700; color: #d4a5e9; min-width: 36px; text-align: right; }
+  input[type=range] { padding: 0; cursor: pointer; accent-color: #d4a5e9; }
   .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.25rem;
-    border-radius: 10px;
-    border: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.65rem 1.25rem; border-radius: 10px; border: none;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
   }
-  .btn-primary {
-    background: #d4a5e9;
-    color: #0a0a0f;
-    width: 100%;
-    justify-content: center;
-    margin-top: 1rem;
-  }
+  .btn-primary { background: #d4a5e9; color: #0a0a0f; width: 100%; justify-content: center; margin-top: 1rem; }
   .btn-primary:hover { background: #e0baf0; }
-  .btn-secondary {
-    background: rgba(255,255,255,0.06);
-    color: #e5e7eb;
-    border: 1px solid rgba(255,255,255,0.1);
-    width: 100%;
-    justify-content: center;
-    margin-top: 0.5rem;
-  }
+  .btn-secondary { background: rgba(255,255,255,0.06); color: #e5e7eb; border: 1px solid rgba(255,255,255,0.1); width: 100%; justify-content: center; margin-top: 0.5rem; }
   .btn-secondary:hover { background: rgba(255,255,255,0.1); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .full { grid-column: 1 / -1; }
+  .rag-pills { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+  .rag-pill {
+    padding: 0.35rem 0.9rem; border-radius: 999px; cursor: pointer;
+    font-size: 0.82rem; font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05);
+    color: #9ca3af; transition: all 0.2s;
+  }
+  .rag-pill.active { background: #d4a5e9; color: #0a0a0f; border-color: #d4a5e9; }
+  .rag-description { font-size: 0.78rem; color: #6b7280; margin-top: 0.5rem; line-height: 1.5; }
   .toast {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    padding: 0.75rem 1.25rem;
-    border-radius: 10px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: all 0.3s;
-    pointer-events: none;
-    max-width: 320px;
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    padding: 0.75rem 1.25rem; border-radius: 10px;
+    font-size: 0.9rem; font-weight: 500;
+    opacity: 0; transform: translateY(8px); transition: all 0.3s;
+    pointer-events: none; max-width: 320px;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.ok { background: #14532d; border: 1px solid #4ade80; color: #4ade80; }
+  .toast.ok  { background: #14532d; border: 1px solid #4ade80; color: #4ade80; }
   .toast.err { background: #450a0a; border: 1px solid #f87171; color: #f87171; }
-  .full { grid-column: 1 / -1; }
   .deploy-note { font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem; text-align: center; }
+  .section-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 0.75rem 0; }
 </style>
 </head>
 <body>
@@ -167,49 +98,78 @@
 
 <div class="grid">
 
-  <!-- Model & Provider -->
+  <!-- API Keys -->
+  <div class="card">
+    <h2>API Keys</h2>
+    <label>Anthropic API Key</label>
+    <input id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off" />
+
+    <hr class="section-divider">
+
+    <label>Brave Search API Key <span style="color:#6b7280;font-weight:400">(optional, for RAG)</span></label>
+    <input id="braveKey" type="password" placeholder="BSA… (free tier at brave.com/search/api)" autocomplete="off" />
+    <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
+      Free: 2,000 searches/month. Without this, falls back to DuckDuckGo (no key needed).
+    </p>
+  </div>
+
+  <!-- Model -->
   <div class="card">
     <h2>Model</h2>
-    <label>Provider</label>
-    <select id="provider">
-      <option value="anthropic">Anthropic</option>
-      <option value="openrouter">OpenRouter</option>
-      <option value="openai">OpenAI</option>
-      <option value="groq">Groq</option>
-      <option value="gemini">Gemini</option>
+    <label>Provider / Model</label>
+    <select id="model">
+      <optgroup label="Anthropic">
+        <option value="claude-opus-4-6">claude-opus-4-6 (best)</option>
+        <option value="claude-sonnet-4-5">claude-sonnet-4-5 (fast)</option>
+        <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (fastest)</option>
+      </optgroup>
+      <optgroup label="OpenAI">
+        <option value="gpt-4o">gpt-4o</option>
+        <option value="gpt-4o-mini">gpt-4o-mini</option>
+      </optgroup>
+      <optgroup label="Google">
+        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+        <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+      </optgroup>
     </select>
-
-    <label>Model</label>
-    <input id="model" type="text" placeholder="claude-opus-4-6" />
 
     <label>Max tokens</label>
     <div class="token-row">
-      <input type="range" id="maxTokensRange" min="50" max="500" step="10" oninput="document.getElementById('maxTokensVal').textContent=this.value; document.getElementById('maxTokens').value=this.value" />
+      <input type="range" id="maxTokensRange" min="50" max="500" step="10" value="150"
+        oninput="document.getElementById('maxTokensVal').textContent=this.value;document.getElementById('maxTokens').value=this.value" />
       <span class="token-val" id="maxTokensVal">150</span>
     </div>
     <input type="hidden" id="maxTokens" value="150" />
   </div>
 
-  <!-- API Key -->
+  <!-- RAG -->
   <div class="card">
-    <h2>API Key</h2>
-    <label>Anthropic / OpenRouter key</label>
-    <input id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off" />
-    <button class="btn btn-primary" onclick="pushKey()">Push key to watch</button>
+    <h2>Web Search (RAG)</h2>
+    <label>Mode</label>
+    <div class="rag-pills">
+      <div class="rag-pill" id="rag-off" onclick="setRag('off')">Off</div>
+      <div class="rag-pill active" id="rag-kotlin" onclick="setRag('kotlin')">Auto-search</div>
+      <div class="rag-pill" id="rag-opus_tool" onclick="setRag('opus_tool')">Opus Tool Use</div>
+    </div>
+    <p class="rag-description" id="ragDesc">
+      <b>Auto-search:</b> Detects queries needing live info (news, weather, prices, scores) and pre-searches before sending to Claude. Uses Brave Search (if key set) or DuckDuckGo (free fallback).
+    </p>
+    <input type="hidden" id="ragMode" value="kotlin" />
   </div>
 
   <!-- System Prompt -->
-  <div class="card full">
+  <div class="card">
     <h2>System Prompt</h2>
-    <textarea id="systemPrompt"></textarea>
+    <textarea id="systemPrompt">You are a voice assistant on a Samsung smartwatch. Rules: respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. Plain spoken language only. Be direct and precise. Never say 'Certainly!' or 'Great question!'</textarea>
   </div>
 
   <!-- Actions -->
   <div class="card full">
     <h2>Actions</h2>
-    <button class="btn btn-primary" onclick="pushConfig()">⬆ Push config to watch</button>
+    <button class="btn btn-primary" onclick="pushAll()">⬆ Push all settings to watch</button>
+    <button class="btn btn-secondary" onclick="loadFromWatch()">⬇ Load current settings from watch</button>
     <button class="btn btn-secondary" onclick="deploy()">🔨 Rebuild &amp; reinstall APK</button>
-    <p class="deploy-note">Rebuild takes ~30s. Watch must be connected via ADB.</p>
+    <p class="deploy-note">Watch must be connected via ADB. Rebuild takes ~30s.</p>
   </div>
 
 </div>
@@ -217,51 +177,58 @@
 <div class="toast" id="toast"></div>
 
 <script>
-let watchConnected = false;
+let ragMode = 'kotlin';
+const RAG_DESCS = {
+  'off': 'No web search. Claude answers from its training data only.',
+  'kotlin': '<b>Auto-search:</b> Detects queries needing live info (news, weather, prices, scores) and pre-searches before sending to Claude. Uses Brave Search (if key set) or DuckDuckGo (free fallback).',
+  'opus_tool': '<b>Opus Tool Use:</b> Claude decides when to search by calling a web_search tool. More accurate intent detection but uses extra tokens for the tool call round-trip.'
+};
 
-async function load() {
-  // Watch status
-  const w = await fetch('/api/watch').then(r => r.json()).catch(() => ({ connected: false }));
-  watchConnected = w.connected;
-  document.getElementById('dot').className = 'dot' + (w.connected ? ' connected' : '');
-  document.getElementById('watchStatus').textContent = w.connected ? (w.device || 'Connected') : 'Not connected';
-
-  // Config
-  const c = await fetch('/api/config').then(r => r.json()).catch(() => null);
-  if (!c?.ok) return;
-  const { config } = c;
-  document.getElementById('provider').value = config.provider || 'anthropic';
-  document.getElementById('model').value = config.model || '';
-  document.getElementById('systemPrompt').value = config.system || '';
-  const mt = config.max_tokens || 150;
-  document.getElementById('maxTokens').value = mt;
-  document.getElementById('maxTokensRange').value = mt;
-  document.getElementById('maxTokensVal').textContent = mt;
+function setRag(mode) {
+  ragMode = mode;
+  document.getElementById('ragMode').value = mode;
+  document.querySelectorAll('.rag-pill').forEach(p => p.classList.remove('active'));
+  document.getElementById('rag-' + mode).classList.add('active');
+  document.getElementById('ragDesc').innerHTML = RAG_DESCS[mode] || '';
 }
 
-async function pushConfig() {
-  const config = {
-    provider: document.getElementById('provider').value,
+async function pushAll() {
+  const settings = {
+    anthropic_api_key: document.getElementById('apiKey').value.trim() || undefined,
+    brave_api_key: document.getElementById('braveKey').value.trim() || undefined,
     model: document.getElementById('model').value,
+    system_prompt: document.getElementById('systemPrompt').value,
     max_tokens: parseInt(document.getElementById('maxTokens').value),
-    system: document.getElementById('systemPrompt').value,
+    rag_mode: ragMode
   };
-  const save = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) }).then(r => r.json());
-  if (!save.ok) return toast('Save failed: ' + save.error, 'err');
+  // Remove undefined
+  Object.keys(settings).forEach(k => settings[k] === undefined && delete settings[k]);
 
-  const push = await fetch('/api/push/config', { method: 'POST' }).then(r => r.json());
-  toast(push.ok ? push.message : push.error, push.ok ? 'ok' : 'err');
-}
-
-async function pushKey() {
-  const key = document.getElementById('apiKey').value.trim();
-  if (!key) return toast('Enter a key first', 'err');
-  const r = await fetch('/api/push/key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) }).then(r => r.json());
+  const r = await fetch('/api/push/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings)
+  }).then(r => r.json());
   toast(r.ok ? r.message : r.error, r.ok ? 'ok' : 'err');
 }
 
+async function loadFromWatch() {
+  const r = await fetch('/api/prefs').then(r => r.json());
+  if (!r.ok) { toast('Could not read watch prefs', 'err'); return; }
+  const p = r.prefs;
+  if (p.model) document.getElementById('model').value = p.model;
+  if (p.system_prompt) document.getElementById('systemPrompt').value = p.system_prompt;
+  if (p.max_tokens) {
+    document.getElementById('maxTokens').value = p.max_tokens;
+    document.getElementById('maxTokensRange').value = p.max_tokens;
+    document.getElementById('maxTokensVal').textContent = p.max_tokens;
+  }
+  if (p.rag_mode) setRag(p.rag_mode);
+  toast('Loaded from watch', 'ok');
+}
+
 async function deploy() {
-  toast('Build started — check terminal for progress', 'ok');
+  toast('Build started — check terminal', 'ok');
   fetch('/api/deploy', { method: 'POST' });
 }
 
@@ -272,14 +239,16 @@ function toast(msg, type) {
   setTimeout(() => el.classList.remove('show'), 3500);
 }
 
-load();
-setInterval(() => {
-  fetch('/api/watch').then(r => r.json()).then(w => {
-    watchConnected = w.connected;
-    document.getElementById('dot').className = 'dot' + (w.connected ? ' connected' : '');
-    document.getElementById('watchStatus').textContent = w.connected ? (w.device || 'Connected') : 'Not connected';
-  }).catch(() => {});
-}, 5000);
+// Watch status poll
+async function checkWatch() {
+  const w = await fetch('/api/watch').then(r => r.json()).catch(() => ({ connected: false }));
+  document.getElementById('dot').className = 'dot' + (w.connected ? ' connected' : '');
+  document.getElementById('watchStatus').textContent = w.connected
+    ? (w.device || 'Connected') : 'Not connected';
+}
+
+checkWatch();
+setInterval(checkWatch, 5000);
 </script>
 </body>
 </html>

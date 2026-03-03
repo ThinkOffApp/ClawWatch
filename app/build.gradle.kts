@@ -67,4 +67,7 @@ dependencies {
 
     // Vosk STT (offline speech recognition)
     implementation(libs.vosk.android)
+
+    // Wearable Data Layer — receive config from phone companion app
+    implementation(libs.play.services.wearable)
 }

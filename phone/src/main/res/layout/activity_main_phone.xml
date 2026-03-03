@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0A0F">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ClawWatch"
+            android:textColor="#D4A5E9"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Configure your watch agent"
+            android:textColor="#6B7280"
+            android:textSize="14sp"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Anthropic API Key -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Anthropic API Key" android:textColor="#9CA3AF" android:textSize="12sp"
+            android:layout_marginBottom="6dp" />
+        <EditText
+            android:id="@+id/apiKeyInput"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="sk-ant-…" android:textColor="#FFFFFF"
+            android:textColorHint="#4B5563" android:inputType="textPassword"
+            android:background="@drawable/input_bg" android:padding="12dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Brave Search Key -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Brave Search API Key (optional, for web search)" android:textColor="#9CA3AF" android:textSize="12sp"
+            android:layout_marginBottom="6dp" />
+        <EditText
+            android:id="@+id/braveKeyInput"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="BSA… (free at brave.com/search/api)" android:textColor="#FFFFFF"
+            android:textColorHint="#4B5563" android:inputType="textPassword"
+            android:background="@drawable/input_bg" android:padding="12dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Model -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Model" android:textColor="#9CA3AF" android:textSize="12sp"
+            android:layout_marginBottom="6dp" />
+        <Spinner
+            android:id="@+id/modelSpinner"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:background="@drawable/input_bg" android:padding="12dp"
+            android:layout_marginBottom="16dp" android:popupBackground="#1A1A2E" />
+
+        <!-- System Prompt -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="System Prompt" android:textColor="#9CA3AF" android:textSize="12sp"
+            android:layout_marginBottom="6dp" />
+        <EditText
+            android:id="@+id/systemPromptInput"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minLines="3" android:gravity="top"
+            android:textColor="#FFFFFF" android:textColorHint="#4B5563"
+            android:inputType="textMultiLine" android:background="@drawable/input_bg"
+            android:padding="12dp" android:layout_marginBottom="16dp" />
+
+        <!-- Max Tokens -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="Max tokens"
+                android:textColor="#9CA3AF" android:textSize="12sp" />
+            <TextView android:id="@+id/maxTokensLabel" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="150"
+                android:textColor="#D4A5E9" android:textStyle="bold" android:textSize="14sp" />
+        </LinearLayout>
+        <SeekBar
+            android:id="@+id/maxTokensSeekBar"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:max="90" android:progress="20"
+            android:thumbTint="#D4A5E9" android:progressTint="#D4A5E9"
+            android:layout_marginBottom="20dp" />
+
+        <!-- RAG Mode -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Web Search (RAG)" android:textColor="#9CA3AF" android:textSize="12sp"
+            android:layout_marginBottom="8dp" />
+        <RadioGroup android:id="@+id/ragGroup" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginBottom="24dp">
+            <RadioButton android:id="@+id/ragOff" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="Off — no web search"
+                android:textColor="#FFFFFF" android:buttonTint="#D4A5E9" android:padding="8dp" />
+            <RadioButton android:id="@+id/ragKotlin" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:checked="true"
+                android:text="Auto-search — detects live info queries, searches automatically"
+                android:textColor="#FFFFFF" android:buttonTint="#D4A5E9" android:padding="8dp" />
+            <RadioButton android:id="@+id/ragOpusTool" android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Opus Tool Use — Claude decides when to search"
+                android:textColor="#FFFFFF" android:buttonTint="#D4A5E9" android:padding="8dp" />
+        </RadioGroup>
+
+        <!-- Sync Button -->
+        <Button
+            android:id="@+id/syncButton"
+            android:layout_width="match_parent" android:layout_height="56dp"
+            android:text="Sync to Watch"
+            android:backgroundTint="#D4A5E9"
+            android:textColor="#000000" android:textStyle="bold"
+            android:textSize="16sp" android:layout_marginBottom="12dp" />
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="" android:textColor="#6B7280"
+            android:textSize="13sp" android:gravity="center"
+            android:layout_marginBottom="32dp" />
+
+    </LinearLayout>
+</ScrollView>

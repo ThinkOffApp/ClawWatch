@@ -31,6 +31,19 @@
             android:foregroundServiceType="microphone"
             android:exported="false" />
 
+        <!-- Receives config sync from companion phone app via Wearable Data Layer -->
+        <service
+            android:name=".ConfigSyncService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/clawwatch" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>

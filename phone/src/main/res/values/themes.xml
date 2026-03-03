@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ClawWatchPhone" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#D4A5E9</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="colorPrimaryContainer">#3D1A52</item>
+        <item name="colorOnPrimaryContainer">#F0D0FF</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+</resources>
