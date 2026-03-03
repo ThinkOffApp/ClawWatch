@@ -90,9 +90,15 @@
 
 <header>
   <h1>Claw<span>Watch</span> Admin</h1>
-  <div class="watch-badge">
-    <div class="dot" id="dot"></div>
-    <span id="watchStatus">Checking…</span>
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto">
+    <input id="watchTarget" type="text" placeholder="192.168.x.x:PORT"
+      style="width:180px;padding:0.35rem 0.6rem;font-size:0.8rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;outline:none"
+      onkeydown="if(event.key==='Enter')connectWatch()" />
+    <button onclick="connectWatch()" style="padding:0.35rem 0.75rem;background:#d4a5e9;color:#000;border:none;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">Connect</button>
+    <div class="watch-badge">
+      <div class="dot" id="dot"></div>
+      <span id="watchStatus">Checking…</span>
+    </div>
   </div>
 </header>
 
@@ -252,6 +258,19 @@ async function checkWatch() {
   document.getElementById('dot').className = 'dot' + (w.connected ? ' connected' : '');
   document.getElementById('watchStatus').textContent = w.connected
     ? (w.device || 'Connected') : 'Not connected';
+  if (w.target && !document.getElementById('watchTarget').value)
+    document.getElementById('watchTarget').value = w.target;
+}
+
+async function connectWatch() {
+  const target = document.getElementById('watchTarget').value.trim();
+  if (!target) return;
+  const r = await fetch('/api/watch/connect', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ target })
+  }).then(r => r.json());
+  toast(r.ok ? r.message : r.error, r.ok ? 'ok' : 'err');
+  checkWatch();
 }
 
 checkWatch();

@@ -8,11 +8,24 @@ const app = express();
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const CONFIG_PATH = path.join(__dirname, '../app/src/main/assets/nullclaw.json');
-const PKG         = 'com.thinkoff.clawwatch';
-const PREFS_PATH  = `/data/data/${PKG}/shared_prefs/clawwatch_prefs.xml`;
+const CONFIG_PATH    = path.join(__dirname, '../app/src/main/assets/nullclaw.json');
+const PKG            = 'com.thinkoff.clawwatch';
+const PREFS_PATH     = `/data/data/${PKG}/shared_prefs/clawwatch_prefs.xml`;
+const STATE_FILE     = path.join(__dirname, '.admin-state.json');
 
-// ── Watch ADB status ──────────────────────────────────
+function loadState() {
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; }
+}
+function saveState(s) { fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2)); }
+
+let watchTarget = loadState().watchTarget || null; // e.g. "192.168.50.101:35977"
+
+function adb(...args) {
+  const prefix = watchTarget ? ['-s', watchTarget] : [];
+  return execSync(['adb', ...prefix, ...args].join(' '), { timeout: 10000 }).toString();
+}
+
+// ── Watch ADB connection ──────────────────────────────
 
 app.get('/api/watch', (req, res) => {
   try {
@@ -21,9 +34,26 @@ app.get('/api/watch', (req, res) => {
     const connected = lines.some(l => l.includes('device') && !l.includes('offline'));
     const device = lines.find(l => l.includes('device') && !l.includes('offline'))
                        ?.split('\t')[0] || null;
-    res.json({ ok: true, connected, device });
+    res.json({ ok: true, connected, device, target: watchTarget });
   } catch {
-    res.json({ ok: true, connected: false, device: null });
+    res.json({ ok: true, connected: false, device: null, target: watchTarget });
+  }
+});
+
+// Connect to watch by IP:port
+app.post('/api/watch/connect', (req, res) => {
+  const { target } = req.body; // e.g. "192.168.50.101:35977"
+  if (!target || !/^\d+\.\d+\.\d+\.\d+:\d+$/.test(target)) {
+    return res.json({ ok: false, error: 'Invalid format — use IP:PORT e.g. 192.168.50.101:35977' });
+  }
+  try {
+    const out = execSync(`adb connect ${target}`, { timeout: 8000 }).toString().trim();
+    watchTarget = target;
+    saveState({ watchTarget });
+    const connected = out.includes('connected');
+    res.json({ ok: true, connected, message: out });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
   }
 });
 
