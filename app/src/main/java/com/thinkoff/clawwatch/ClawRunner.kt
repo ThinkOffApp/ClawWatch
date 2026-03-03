@@ -139,16 +139,60 @@ class ClawRunner(private val context: Context) {
         return LIVE_INFO_KEYWORDS.any { lower.contains(it) }
     }
 
+    private val WEATHER_KEYWORDS = setOf("weather", "temperature", "forecast", "rain", "sunny", "cloudy", "wind", "humidity", "hot", "cold", "degrees")
+
     /**
-     * Search using Brave Search API (preferred, accurate) or DuckDuckGo (fallback, free).
-     * Returns list of (title, snippet) pairs, max 3 results.
+     * Route to the right search source based on query type.
+     * Weather → wttr.in (free, real-time, no key needed)
+     * Other   → Brave (if key set) or DuckDuckGo
      */
     private fun webSearch(query: String): List<Pair<String, String>> {
+        val lower = query.lowercase()
+        if (WEATHER_KEYWORDS.any { lower.contains(it) }) {
+            val weatherResult = wttrSearch(query)
+            if (weatherResult.isNotEmpty()) return weatherResult
+        }
         val braveKey = getBraveKey()
-        return if (!braveKey.isNullOrBlank()) {
-            braveSearch(query, braveKey)
-        } else {
-            duckDuckGoSearch(query)
+        return if (!braveKey.isNullOrBlank()) braveSearch(query, braveKey)
+        else duckDuckGoSearch(query)
+    }
+
+    /** Get current weather from wttr.in (free, no API key, real-time). */
+    private fun wttrSearch(query: String): List<Pair<String, String>> {
+        return try {
+            // Extract location from query — strip weather keywords
+            val location = query.lowercase()
+                .replace(Regex("(weather|forecast|temperature|what'?s? (the|is)?|in|today|now|currently|right now)"), " ")
+                .trim().replace(Regex("\\s+"), "+").ifBlank { "Berlin" }
+
+            val url = URL("https://wttr.in/$location?format=j1")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.setRequestProperty("User-Agent", "ClawWatch/1.0")
+            conn.connectTimeout = 8_000
+            conn.readTimeout = 8_000
+
+            if (conn.responseCode != 200) return emptyList()
+
+            val json = JSONObject(conn.inputStream.bufferedReader().readText())
+            val current = json.getJSONArray("current_condition").getJSONObject(0)
+            val area = json.getJSONArray("nearest_area").getJSONObject(0)
+                .getJSONArray("areaName").getJSONObject(0).getString("value")
+            val country = json.getJSONArray("nearest_area").getJSONObject(0)
+                .getJSONArray("country").getJSONObject(0).getString("value")
+
+            val tempC = current.getString("temp_C")
+            val tempF = current.getString("temp_F")
+            val desc = current.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
+            val humidity = current.getString("humidity")
+            val feelsC = current.getString("FeelsLikeC")
+            val windKmph = current.getString("windspeedKmph")
+
+            val summary = "$desc, $tempC°C ($tempF°F), feels like $feelsC°C. Humidity $humidity%, wind $windKmph km/h."
+            Log.i(TAG, "wttr.in result for $area: $summary")
+            listOf(Pair("Current weather in $area, $country", summary))
+        } catch (e: Exception) {
+            Log.w(TAG, "wttr.in failed: ${e.message}")
+            emptyList()
         }
     }
 
