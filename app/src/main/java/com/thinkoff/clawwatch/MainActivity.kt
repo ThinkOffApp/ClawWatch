@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import android.view.View
+import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.app.AppCompatActivity
@@ -396,6 +397,7 @@ class MainActivity : AppCompatActivity() {
     private fun setState(s: State) {
         state = s
         runOnUiThread {
+            applyConversationScreenPolicy(s)
             binding.splashPanel.visibility = View.GONE
             binding.setupPanel.visibility  = if (s == State.SETUP)    View.VISIBLE else View.GONE
             binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
@@ -422,6 +424,19 @@ class MainActivity : AppCompatActivity() {
                     }
                 )
             )
+        }
+    }
+
+    private fun applyConversationScreenPolicy(state: State) {
+        val keepOn = when (state) {
+            State.LISTENING, State.THINKING, State.SEARCHING, State.SPEAKING -> true
+            else -> false
+        }
+        binding.root.keepScreenOn = keepOn
+        if (keepOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
