@@ -9,6 +9,7 @@ import android.os.BatteryManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +21,7 @@ import com.thinkoff.clawwatch.databinding.ActivityMainBinding
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
  * Main Wear OS activity.
@@ -60,6 +62,8 @@ class MainActivity : AppCompatActivity() {
     private var isAutoListenWindow = false
     private var countdownAnimator: ValueAnimator? = null
     private var avatarAnimator: ValueAnimator? = null
+    private var avatarSwipeStartX = 0f
+    private var avatarSwipeStartY = 0f
 
     private val requestMic = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -67,12 +71,12 @@ class MainActivity : AppCompatActivity() {
 
     private val avatarExpressions: Map<AvatarType, Map<AvatarState, String>> = mapOf(
         AvatarType.ANT to mapOf(
-            AvatarState.IDLE to "🐜",
-            AvatarState.LISTENING to "🐜👂",
-            AvatarState.THINKING to "🐜💭",
-            AvatarState.SEARCHING to "🐜🔎",
-            AvatarState.SPEAKING to "🐜💬",
-            AvatarState.ERROR to "🐜⚠️"
+            AvatarState.IDLE to "🐜🙂",
+            AvatarState.LISTENING to "🐜😮",
+            AvatarState.THINKING to "🐜🤔",
+            AvatarState.SEARCHING to "🐜🔎🙂",
+            AvatarState.SPEAKING to "🐜🗣️",
+            AvatarState.ERROR to "🐜😵"
         ),
         AvatarType.LOBSTER to mapOf(
             AvatarState.IDLE to "🦞",
@@ -118,6 +122,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.fab.setOnClickListener { onFabTapped() }
         binding.saveKeyBtn.setOnClickListener { onSaveKey() }
+        setupAvatarSwipeSwitch()
 
         lifecycleScope.launch { initialise() }
     }
@@ -268,6 +273,49 @@ class MainActivity : AppCompatActivity() {
             "girl" -> AvatarType.GIRL
             else -> AvatarType.ANT
         }
+    }
+
+    private fun setupAvatarSwipeSwitch() {
+        binding.avatarContainer.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    avatarSwipeStartX = event.x
+                    avatarSwipeStartY = event.y
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - avatarSwipeStartX
+                    val dy = event.y - avatarSwipeStartY
+                    val threshold = 28f * resources.displayMetrics.density
+                    if (abs(dx) > threshold && abs(dx) > abs(dy) * 1.2f) {
+                        if (dx > 0) previousAvatarType() else nextAvatarType()
+                    }
+                    true
+                }
+                else -> true
+            }
+        }
+    }
+
+    private fun avatarTypeKey(type: AvatarType): String = when (type) {
+        AvatarType.ANT -> "ant"
+        AvatarType.LOBSTER -> "lobster"
+        AvatarType.ROBOT -> "robot"
+        AvatarType.BOY -> "boy"
+        AvatarType.GIRL -> "girl"
+    }
+
+    private fun nextAvatarType() = rotateAvatarBy(+1)
+    private fun previousAvatarType() = rotateAvatarBy(-1)
+
+    private fun rotateAvatarBy(step: Int) {
+        val all = AvatarType.entries
+        val current = currentAvatarType()
+        val currentIndex = all.indexOf(current).takeIf { it >= 0 } ?: 0
+        val nextIndex = (currentIndex + step + all.size) % all.size
+        val next = all[nextIndex]
+        prefs.edit().putString(PREF_AVATAR_TYPE, avatarTypeKey(next)).apply()
+        updateAvatar(state)
     }
 
     private fun avatarStateFor(s: State): AvatarState = when (s) {
