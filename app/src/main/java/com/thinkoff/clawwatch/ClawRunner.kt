@@ -63,7 +63,7 @@ class ClawRunner(private val context: Context) {
     private val nullclawConfigFile get() = File(homeDir, ".nullclaw/config.json")
     private val caBundleFile get() = File(filesDir, "ca-certificates.crt")
 
-    private val prefs get() = SecurePrefs.watch(context)
+    private val prefs by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SecurePrefs.watch(context) }
 
     // ── Config accessors ─────────────────────────────────────────────────────
 
