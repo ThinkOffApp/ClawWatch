@@ -305,7 +305,7 @@ class MainActivity : AppCompatActivity() {
                     val dx = event.x - avatarSwipeStartX
                     val dy = event.y - avatarSwipeStartY
                     if (abs(dx) > threshold && abs(dx) > abs(dy) * 1.2f) {
-                        if (dx > 0) previousAvatarType() else nextAvatarType()
+                        if (dx > 0) finish() else nextAvatarType()
                     }
                     view.parent?.requestDisallowInterceptTouchEvent(false)
                     true
@@ -329,7 +329,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun nextAvatarType() = rotateAvatarBy(+1)
-    private fun previousAvatarType() = rotateAvatarBy(-1)
 
     private fun rotateAvatarBy(step: Int) {
         val all = AvatarType.entries
