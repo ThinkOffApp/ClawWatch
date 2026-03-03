@@ -113,6 +113,8 @@ That's it. Open ClawWatch on the watch.
 | **Speak** | Partial transcript shown while speaking |
 | **Stop speaking** | NullClaw + LLM processes query |
 | **Tap again** | Interrupt at any point |
+| **Swipe left on avatar** | Switch to next avatar |
+| **Swipe right on avatar** | Close app |
 
 The watch speaks the response aloud via the built-in speaker.
 
@@ -128,6 +130,9 @@ The watch speaks the response aloud via the built-in speaker.
 - Auto-listen: after speaking finishes, mic opens automatically for a short follow-up window; if no speech is detected, it returns to idle.
 - Low battery rule: when battery is below 20%, avatar turns greyer and avatar animations stop.
 - Avatar options: `ant`, `lobster`, `robot`, `boy`, `girl`.
+- Conversation memory: rolling recent turns are included in each query for follow-ups.
+- Screen policy: screen stays awake during active conversation states (`listening/thinking/searching/speaking`) and returns to normal sleep in idle.
+- Action bubble: compact flat bubble (no dark halo/ring overlap).
 
 ## Admin Panel
 
@@ -141,12 +146,18 @@ node server.js
 ```
 
 The admin panel lets you:
+- **Watch target connect** — set `IP:PORT` and connect from the UI
 - **Watch status** — live ADB connection indicator (green dot when connected)
 - **API key** — push directly to the watch with one click
+- **Tavily key** — recommended live web RAG key (free tier)
+- **Brave key** — alternative web search key
 - **Model** — switch between providers and models (claude-opus-4-6, gpt-4o, gemini, etc.)
+- **Avatar selector** — choose `lobster/ant/robot/boy/girl` and push to watch
 - **Max tokens** — slider with live value
+- **RAG mode** — `off`, `auto-search`, or `opus tool use`
 - **System prompt** — edit the agent's personality and instructions
-- **Push config** — saves locally and pushes to watch in one click
+- **Push all settings** — merges and pushes settings to watch in one click
+- **Capture logs** — download watch logcat snapshot for crash/debug review
 - **Rebuild & reinstall** — triggers `./gradlew assembleDebug && adb install` from the browser
 
 The admin panel talks to the watch via ADB. Make sure `adb connect <watch-ip>:<port>` is active before pushing.
