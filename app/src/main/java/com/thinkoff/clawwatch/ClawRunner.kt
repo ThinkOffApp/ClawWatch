@@ -53,7 +53,12 @@ class ClawRunner(private val context: Context) {
             "You are a voice assistant on a Samsung smartwatch. " +
             "Rules: respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. " +
             "Plain spoken language only. Be direct and precise. Never say 'Certainly!' or 'Great question!'"
+
+        private const val MAX_CONTEXT_MESSAGES = 10
+        private const val MAX_CONTEXT_CHARS_PER_MESSAGE = 600
     }
+
+    private data class ChatTurn(val role: String, val content: String)
 
     private val filesDir get() = context.filesDir
     private val homeDir get() = context.filesDir.parentFile!!
@@ -64,6 +69,8 @@ class ClawRunner(private val context: Context) {
     private val caBundleFile get() = File(filesDir, "ca-certificates.crt")
 
     private val prefs by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SecurePrefs.watch(context) }
+    private val conversationLock = Any()
+    private val conversation = ArrayDeque<ChatTurn>()
 
     // ── Config accessors ─────────────────────────────────────────────────────
 
@@ -390,8 +397,8 @@ class ClawRunner(private val context: Context) {
     private suspend fun queryWithKotlinRag(prompt: String, apiKey: String): Result<String> =
         withContext(Dispatchers.IO) {
             var systemPrompt = getSystemPrompt()
-
-            if (needsWebSearch(prompt)) {
+            val forceSearchWithTavily = !getTavilyKey().isNullOrBlank()
+            if (forceSearchWithTavily || needsWebSearch(prompt)) {
                 Log.i(TAG, "Kotlin RAG: searching for '$prompt'")
                 val results = webSearch(prompt)
                 if (results.isNotEmpty()) {
@@ -581,12 +588,7 @@ class ClawRunner(private val context: Context) {
             put("model", model)
             put("max_tokens", maxTokens)
             put("system", systemPrompt)
-            put("messages", JSONArray().apply {
-                put(JSONObject().apply {
-                    put("role", "user")
-                    put("content", userMessage)
-                })
-            })
+            put("messages", buildMessagesWithContext(userMessage))
         }.toString()
 
         val response = callAnthropicRaw(apiKey, body)
@@ -597,10 +599,39 @@ class ClawRunner(private val context: Context) {
                 .getJSONObject(0)
                 .getString("text")
                 .trim()
+            appendConversation("user", userMessage)
+            appendConversation("assistant", text)
             Log.i(TAG, "Response: '${text.take(80)}'")
             Result.success(text)
         } catch (e: Exception) {
             Result.failure(RuntimeException("Failed to parse response: ${e.message}"))
+        }
+    }
+
+    private fun buildMessagesWithContext(userMessage: String): JSONArray {
+        val snapshot = synchronized(conversationLock) { conversation.toList() }
+        return JSONArray().apply {
+            snapshot.forEach { turn ->
+                put(JSONObject().apply {
+                    put("role", turn.role)
+                    put("content", turn.content)
+                })
+            }
+            put(JSONObject().apply {
+                put("role", "user")
+                put("content", userMessage)
+            })
+        }
+    }
+
+    private fun appendConversation(role: String, content: String) {
+        val normalized = content.trim().replace(Regex("\\s+"), " ")
+        if (normalized.isBlank()) return
+        synchronized(conversationLock) {
+            conversation.addLast(ChatTurn(role, normalized.take(MAX_CONTEXT_CHARS_PER_MESSAGE)))
+            while (conversation.size > MAX_CONTEXT_MESSAGES) {
+                conversation.removeFirst()
+            }
         }
     }
 
