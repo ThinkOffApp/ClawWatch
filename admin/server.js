@@ -281,6 +281,42 @@ app.post('/api/deploy', (req, res) => {
   );
 });
 
+// ── Log capture ───────────────────────────────────────
+
+app.get('/api/logs', (req, res) => {
+  if (!watchTarget) {
+    return res.json({ ok: false, error: 'Watch target not set. Connect watch first.' });
+  }
+
+  const requested = parseInt(String(req.query.lines ?? '800'), 10);
+  const lines = Number.isFinite(requested) ? Math.max(100, Math.min(5000, requested)) : 800;
+
+  try {
+    const raw = adb(['logcat', '-d', '-v', 'time', '-t', String(lines)], { timeout: 15000 });
+    const allLines = raw.split('\n');
+    const clawPattern = /(com\.thinkoff\.clawwatch|ClawWatch|ClawRunner|VoiceEngine|ConfigSyncService|FATAL EXCEPTION|AndroidRuntime)/i;
+    const clawLines = allLines.filter(line => clawPattern.test(line));
+    const chosenLines = clawLines.length > 0 ? clawLines : allLines.slice(-Math.min(allLines.length, 400));
+    const header = [
+      `# ClawWatch log capture`,
+      `# target: ${watchTarget}`,
+      `# captured_at: ${new Date().toISOString()}`,
+      `# source_lines: ${allLines.length}`,
+      `# selected_lines: ${chosenLines.length}`,
+      `# filtered: ${clawLines.length > 0 ? 'clawwatch-only' : 'tail-fallback'}`
+    ].join('\n');
+
+    res.json({
+      ok: true,
+      target: watchTarget,
+      selected_lines: chosenLines.length,
+      logs: `${header}\n\n${chosenLines.join('\n')}`.trim()
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = 4747;
 const HOST = '127.0.0.1'; // localhost only — not exposed to network
 app.listen(PORT, HOST, () => {

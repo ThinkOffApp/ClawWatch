@@ -190,6 +190,7 @@
     <button class="btn btn-primary" onclick="pushAll()">⬆ Push all settings to watch</button>
     <button class="btn btn-secondary" onclick="loadFromWatch()">⬇ Load current settings from watch</button>
     <button class="btn btn-secondary" onclick="deploy()">🔨 Rebuild &amp; reinstall APK</button>
+    <button class="btn btn-secondary" onclick="captureLogs()">🧾 Capture logs (download)</button>
     <p class="deploy-note">Watch must be connected via ADB. Rebuild takes ~30s.</p>
   </div>
 
@@ -254,6 +255,27 @@ async function loadFromWatch() {
 async function deploy() {
   toast('Build started — check terminal', 'ok');
   fetch('/api/deploy', { method: 'POST' });
+}
+
+async function captureLogs() {
+  const r = await fetch('/api/logs?lines=1200').then(r => r.json()).catch(() => ({ ok: false, error: 'Failed to fetch logs' }));
+  if (!r.ok || !r.logs) {
+    toast(r.error || 'Could not capture logs', 'err');
+    return;
+  }
+
+  const now = new Date();
+  const stamp = now.toISOString().replace(/[:.]/g, '-');
+  const blob = new Blob([r.logs], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `clawwatch-log-${stamp}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast(`Downloaded ${r.selected_lines || 0} log lines`, 'ok');
 }
 
 function toast(msg, type) {
