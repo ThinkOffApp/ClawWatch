@@ -1,0 +1,46 @@
+flowchart TB
+    subgraph WATCH["Galaxy Watch · Wear OS"]
+        direction TB
+        MIC["Adaptive Mic Button"]
+        VOSK["Vosk STT<br/>(offline, 68 MB model)"]
+        RAG["RAG Prompt Builder"]
+        NULLCLAW["NullClaw Agent<br/>(2.8 MB Zig binary)"]
+        TTS["Android TTS"]
+        SEARCH["Web Search<br/>(Tavily / Brave)"]
+        SECPREFS["SecurePrefs<br/>(encrypted storage)"]
+        AVATAR["Avatar UI<br/>(lobster / ant / robot)"]
+    end
+
+    subgraph CLOUD["LLM Cloud"]
+        LLM["Claude Opus 4.6<br/>(or configurable model)"]
+    end
+
+    subgraph ADMIN["Admin Panel"]
+        ADMINUI["Web UI<br/>(ADB WiFi)"]
+    end
+
+    MIC -->|"voice input"| VOSK
+    VOSK -->|"transcript"| RAG
+    RAG -->|"enriched prompt"| NULLCLAW
+    NULLCLAW <-->|"HTTPS"| LLM
+    NULLCLAW -->|"tool call"| SEARCH
+    SEARCH -->|"results"| RAG
+    NULLCLAW -->|"response text"| TTS
+    TTS -->|"audio"| AVATAR
+    NULLCLAW -->|"state updates"| AVATAR
+    SECPREFS -.->|"API keys & config"| NULLCLAW
+    ADMINUI -->|"ADB WiFi"| SECPREFS
+
+    style WATCH fill:#1a1a2e,stroke:#e94560,stroke-width:2px,color:#eee
+    style CLOUD fill:#0f3460,stroke:#16213e,stroke-width:2px,color:#eee
+    style ADMIN fill:#1a1a2e,stroke:#533483,stroke-width:2px,color:#eee
+    style LLM fill:#0f3460,stroke:#e94560,color:#eee
+    style AVATAR fill:#16213e,stroke:#e94560,color:#eee
+    style MIC fill:#16213e,stroke:#e94560,color:#eee
+    style VOSK fill:#16213e,stroke:#0ea5e9,color:#eee
+    style NULLCLAW fill:#16213e,stroke:#22c55e,color:#eee
+    style RAG fill:#16213e,stroke:#f59e0b,color:#eee
+    style TTS fill:#16213e,stroke:#0ea5e9,color:#eee
+    style SEARCH fill:#16213e,stroke:#f59e0b,color:#eee
+    style SECPREFS fill:#16213e,stroke:#a855f7,color:#eee
+    style ADMINUI fill:#16213e,stroke:#a855f7,color:#eee
