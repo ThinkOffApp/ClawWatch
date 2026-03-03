@@ -157,41 +157,59 @@ class ClawRunner(private val context: Context) {
         else duckDuckGoSearch(query)
     }
 
-    /** Get current weather from wttr.in (free, no API key, real-time). */
+    // WMO weather code descriptions
+    private fun wmoDescription(code: Int) = when(code) {
+        0 -> "Clear sky"; 1,2,3 -> "Partly cloudy"
+        45,48 -> "Foggy"; 51,53,55 -> "Drizzle"; 61,63,65 -> "Rain"
+        71,73,75 -> "Snow"; 80,81,82 -> "Rain showers"; 95 -> "Thunderstorm"
+        else -> "Overcast"
+    }
+
+    /** Get current weather from Open-Meteo (free, no API key, real-time). */
     private fun wttrSearch(query: String): List<Pair<String, String>> {
         return try {
-            // Extract location from query — strip weather keywords
+            // Extract location from query
             val location = query.lowercase()
                 .replace(Regex("\\b(weather|forecast|temperature|what's?|what is|the|is|in|today|tonight|now|currently|right now|please|tell me)\\b"), " ")
-                .trim().replace(Regex("\\s+"), "+").ifBlank { "Berlin" }
+                .trim().replace(Regex("\\s+"), " ").ifBlank { "Berlin" }
 
-            val url = URL("https://wttr.in/$location?format=j1")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.setRequestProperty("User-Agent", "ClawWatch/1.0")
-            conn.connectTimeout = 8_000
-            conn.readTimeout = 8_000
+            // Step 1: geocode the location
+            val geoEncoded = URLEncoder.encode(location, "UTF-8")
+            val geoUrl = URL("https://geocoding-api.open-meteo.com/v1/search?name=$geoEncoded&count=1&format=json")
+            val geoConn = geoUrl.openConnection() as HttpURLConnection
+            geoConn.connectTimeout = 8_000; geoConn.readTimeout = 8_000
+            if (geoConn.responseCode != 200) return emptyList()
+            val geoJson = JSONObject(geoConn.inputStream.bufferedReader().readText())
+            val results = geoJson.optJSONArray("results") ?: return emptyList()
+            if (results.length() == 0) return emptyList()
+            val place = results.getJSONObject(0)
+            val lat = place.getDouble("latitude")
+            val lon = place.getDouble("longitude")
+            val cityName = place.getString("name")
+            val country = place.optString("country", "")
 
-            if (conn.responseCode != 200) return emptyList()
+            // Step 2: get current weather
+            val wxUrl = URL("https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
+                "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature" +
+                "&temperature_unit=celsius&wind_speed_unit=kmh&format=json")
+            val wxConn = wxUrl.openConnection() as HttpURLConnection
+            wxConn.connectTimeout = 8_000; wxConn.readTimeout = 8_000
+            if (wxConn.responseCode != 200) return emptyList()
+            val wxJson = JSONObject(wxConn.inputStream.bufferedReader().readText())
+            val current = wxJson.getJSONObject("current")
 
-            val json = JSONObject(conn.inputStream.bufferedReader().readText())
-            val current = json.getJSONArray("current_condition").getJSONObject(0)
-            val area = json.getJSONArray("nearest_area").getJSONObject(0)
-                .getJSONArray("areaName").getJSONObject(0).getString("value")
-            val country = json.getJSONArray("nearest_area").getJSONObject(0)
-                .getJSONArray("country").getJSONObject(0).getString("value")
+            val tempC = current.getDouble("temperature_2m")
+            val feelsC = current.getDouble("apparent_temperature")
+            val humidity = current.getInt("relative_humidity_2m")
+            val wind = current.getDouble("wind_speed_10m")
+            val code = current.getInt("weather_code")
+            val desc = wmoDescription(code)
 
-            val tempC = current.getString("temp_C")
-            val tempF = current.getString("temp_F")
-            val desc = current.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
-            val humidity = current.getString("humidity")
-            val feelsC = current.getString("FeelsLikeC")
-            val windKmph = current.getString("windspeedKmph")
-
-            val summary = "$desc, $tempC°C ($tempF°F), feels like $feelsC°C. Humidity $humidity%, wind $windKmph km/h."
-            Log.i(TAG, "wttr.in result for $area: $summary")
-            listOf(Pair("Current weather in $area, $country", summary))
+            val summary = "$desc, ${tempC}°C (feels like ${feelsC}°C). Humidity ${humidity}%, wind ${wind} km/h."
+            Log.i(TAG, "Open-Meteo: $cityName $summary")
+            listOf(Pair("Current weather in $cityName, $country", summary))
         } catch (e: Exception) {
-            Log.w(TAG, "wttr.in failed: ${e.message}")
+            Log.w(TAG, "Open-Meteo failed: ${e.message}")
             emptyList()
         }
     }
