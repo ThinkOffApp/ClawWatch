@@ -72,44 +72,44 @@ class MainActivity : AppCompatActivity() {
 
     private val avatarExpressions: Map<AvatarType, Map<AvatarState, String>> = mapOf(
         AvatarType.ANT to mapOf(
-            AvatarState.IDLE to "🐜🙂",
-            AvatarState.LISTENING to "🐜😮",
-            AvatarState.THINKING to "🐜🤔",
-            AvatarState.SEARCHING to "🐜🔎🙂",
-            AvatarState.SPEAKING to "🐜🗣️",
-            AvatarState.ERROR to "🐜😵"
+            AvatarState.IDLE to "🐜",
+            AvatarState.LISTENING to "🐜",
+            AvatarState.THINKING to "🐜",
+            AvatarState.SEARCHING to "🐜",
+            AvatarState.SPEAKING to "🐜",
+            AvatarState.ERROR to "🐜"
         ),
         AvatarType.LOBSTER to mapOf(
             AvatarState.IDLE to "🦞",
-            AvatarState.LISTENING to "🦞👂",
-            AvatarState.THINKING to "🦞💭",
-            AvatarState.SEARCHING to "🦞🔎",
-            AvatarState.SPEAKING to "🦞💬",
-            AvatarState.ERROR to "🦞⚠️"
+            AvatarState.LISTENING to "🦞",
+            AvatarState.THINKING to "🦞",
+            AvatarState.SEARCHING to "🦞",
+            AvatarState.SPEAKING to "🦞",
+            AvatarState.ERROR to "🦞"
         ),
         AvatarType.ROBOT to mapOf(
             AvatarState.IDLE to "🤖",
-            AvatarState.LISTENING to "🤖👂",
-            AvatarState.THINKING to "🤖💭",
-            AvatarState.SEARCHING to "🤖🔎",
-            AvatarState.SPEAKING to "🤖💬",
-            AvatarState.ERROR to "🤖⚠️"
+            AvatarState.LISTENING to "🤖",
+            AvatarState.THINKING to "🤖",
+            AvatarState.SEARCHING to "🤖",
+            AvatarState.SPEAKING to "🤖",
+            AvatarState.ERROR to "🤖"
         ),
         AvatarType.BOY to mapOf(
             AvatarState.IDLE to "👦",
-            AvatarState.LISTENING to "👦👂",
-            AvatarState.THINKING to "👦💭",
-            AvatarState.SEARCHING to "👦🔎",
-            AvatarState.SPEAKING to "👦💬",
-            AvatarState.ERROR to "👦⚠️"
+            AvatarState.LISTENING to "👦",
+            AvatarState.THINKING to "👦",
+            AvatarState.SEARCHING to "👦",
+            AvatarState.SPEAKING to "👦",
+            AvatarState.ERROR to "👦"
         ),
         AvatarType.GIRL to mapOf(
             AvatarState.IDLE to "👧",
-            AvatarState.LISTENING to "👧👂",
-            AvatarState.THINKING to "👧💭",
-            AvatarState.SEARCHING to "👧🔎",
-            AvatarState.SPEAKING to "👧💬",
-            AvatarState.ERROR to "👧⚠️"
+            AvatarState.LISTENING to "👧",
+            AvatarState.THINKING to "👧",
+            AvatarState.SEARCHING to "👧",
+            AvatarState.SPEAKING to "👧",
+            AvatarState.ERROR to "👧"
         )
     )
 
@@ -494,13 +494,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateActionIndicator(s: State) {
         binding.actionIndicator.text = when (s) {
-            State.IDLE -> "◎"
-            State.LISTENING -> "●"
-            State.THINKING -> "⋯"
-            State.SEARCHING -> "⌕"
-            State.SPEAKING -> "»"
-            State.ERROR -> "!"
-            State.SETUP -> "?"
+            State.IDLE -> "·"
+            State.LISTENING -> "👂"
+            State.THINKING -> "💭"
+            State.SEARCHING -> "🔎"
+            State.SPEAKING -> "💬"
+            State.ERROR -> "⚠️"
+            State.SETUP -> ""
         }
         binding.actionIndicator.visibility = if (s == State.SETUP) View.INVISIBLE else View.VISIBLE
     }

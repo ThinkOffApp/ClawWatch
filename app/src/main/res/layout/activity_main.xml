@@ -124,17 +124,15 @@
 
             <TextView
                 android:id="@+id/actionIndicator"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_gravity="end|top"
-                android:layout_marginTop="22dp"
-                android:layout_marginEnd="2dp"
-                android:background="@drawable/action_indicator_bg"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="6dp"
                 android:gravity="center"
                 android:text="◎"
-                android:textColor="#0A0A0F"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textColor="#D4A5E9"
+                android:textSize="15sp" />
         </FrameLayout>
 
         <FrameLayout

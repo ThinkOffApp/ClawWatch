@@ -12,6 +12,16 @@ ClawWatch runs [NullClaw](https://github.com/nullclaw/nullclaw) — a 2.8 MB sta
 
 **[Watch the first live demo on X](https://x.com/petruspennanen/status/2028503452788166751)**
 
+## Screenshots
+
+| Idle | Listening |
+|---|---|
+| ![ClawWatch idle state](assets/screenshots/watch-02.png) | ![ClawWatch listening state](assets/screenshots/watch-03.png) |
+
+| Thinking | Speaking |
+|---|---|
+| ![ClawWatch thinking state](assets/screenshots/watch-04.png) | ![ClawWatch speaking state](assets/screenshots/watch-01.png) |
+
 ---
 
 ## How it works
