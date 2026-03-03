@@ -185,6 +185,7 @@ app.post('/api/push/settings', (req, res) => {
     tavily_api_key,
     brave_api_key,
     model,
+    avatar_type,
     system_prompt,
     max_tokens,
     rag_mode
@@ -200,6 +201,9 @@ app.post('/api/push/settings', (req, res) => {
   if (brave_api_key && !/^[a-zA-Z0-9\-_]+$/.test(brave_api_key)) {
     return res.json({ ok: false, error: 'Invalid Brave key format' });
   }
+  if (avatar_type && !['ant', 'lobster', 'robot', 'boy', 'girl'].includes(avatar_type)) {
+    return res.json({ ok: false, error: 'Invalid avatar type' });
+  }
 
   try {
     const current = readPrefsFromWatch();
@@ -209,6 +213,7 @@ app.post('/api/push/settings', (req, res) => {
     if (tavily_api_key) updates.tavily_api_key = tavily_api_key;
     if (brave_api_key) updates.brave_api_key = brave_api_key;
     if (model) updates.model = model;
+    if (avatar_type) updates.avatar_type = avatar_type;
     if (system_prompt) updates.system_prompt = system_prompt;
     if (max_tokens !== undefined) {
       const parsedMaxTokens = parseInt(max_tokens, 10);
