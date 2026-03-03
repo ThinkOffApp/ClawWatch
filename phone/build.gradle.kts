@@ -11,8 +11,8 @@ android {
         applicationId = "com.thinkoff.clawwatch"   // same as watch — Play Store pairing
         minSdk = 26                                  // Android 8.0+
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "1.0.0"
     }
 
     buildTypes {

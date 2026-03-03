@@ -9,10 +9,12 @@ import android.os.BatteryManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
+import android.view.ViewConfiguration
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -41,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         private const val AVATAR_SWIPE_THRESHOLD_DP = 24f
         private const val PREF_RAG_MODE = "rag_mode"
         private const val PREF_AVATAR_TYPE = "avatar_type"
+        private const val PREF_LIVE_TEXT_ENABLED = "live_text_enabled"
         private const val ACCENT_COLOR = 0xFFD4A5E9.toInt()
         private const val LOW_BATTERY_COLOR = 0xFF9CA3AF.toInt()
     }
@@ -67,6 +70,7 @@ class MainActivity : AppCompatActivity() {
     private var avatarSwipeStartX = 0f
     private var avatarSwipeStartY = 0f
     private var avatarSwipeActive = false
+    private var avatarTouchStartAt = 0L
 
     private val requestMic = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -294,6 +298,7 @@ class MainActivity : AppCompatActivity() {
                 MotionEvent.ACTION_DOWN -> {
                     avatarSwipeStartX = event.x
                     avatarSwipeStartY = event.y
+                    avatarTouchStartAt = SystemClock.elapsedRealtime()
                     avatarSwipeActive = true
                     view.parent?.requestDisallowInterceptTouchEvent(true)
                     true
@@ -312,6 +317,14 @@ class MainActivity : AppCompatActivity() {
                     avatarSwipeActive = false
                     val dx = event.x - avatarSwipeStartX
                     val dy = event.y - avatarSwipeStartY
+                    val heldLong = (SystemClock.elapsedRealtime() - avatarTouchStartAt) >=
+                        ViewConfiguration.getLongPressTimeout()
+                    val mostlyStill = abs(dx) < threshold / 2 && abs(dy) < threshold / 2
+                    if (heldLong && mostlyStill) {
+                        showOptionsMenu()
+                        view.parent?.requestDisallowInterceptTouchEvent(false)
+                        return@setOnTouchListener true
+                    }
                     if (abs(dx) > threshold && abs(dx) > abs(dy) * 1.2f) {
                         if (dx > 0) finish() else nextAvatarType()
                     }
@@ -326,6 +339,39 @@ class MainActivity : AppCompatActivity() {
                 else -> true
             }
         }
+    }
+
+    private fun isLiveTextEnabled(): Boolean =
+        prefs.getBoolean(PREF_LIVE_TEXT_ENABLED, false)
+
+    private fun showOptionsMenu() {
+        val options = arrayOf("Demo live text: Off", "Demo live text: On")
+        val selected = if (isLiveTextEnabled()) 1 else 0
+        AlertDialog.Builder(this)
+            .setTitle("Options")
+            .setSingleChoiceItems(options, selected) { dialog, which ->
+                prefs.edit().putBoolean(PREF_LIVE_TEXT_ENABLED, which == 1).apply()
+                applyLiveTextVisibility()
+                if (which == 1) {
+                    setStatus(when (state) {
+                        State.IDLE -> "Tap to talk"
+                        State.LISTENING -> "Listening…"
+                        State.THINKING -> "Thinking…"
+                        State.SEARCHING -> "Searching…"
+                        State.SPEAKING -> "Speaking…"
+                        State.ERROR -> "Error"
+                        State.SETUP -> "API key missing"
+                    })
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun applyLiveTextVisibility() {
+        val show = isLiveTextEnabled() && state != State.SETUP
+        binding.statusText.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     private fun avatarTypeKey(type: AvatarType): String = when (type) {
@@ -506,6 +552,7 @@ class MainActivity : AppCompatActivity() {
             binding.splashPanel.visibility = View.GONE
             binding.setupPanel.visibility  = if (s == State.SETUP)    View.VISIBLE else View.GONE
             binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
+            applyLiveTextVisibility()
             updateAvatar(s)
             updateActionIndicator(s)
             binding.fab.contentDescription = when (s) {
@@ -556,7 +603,14 @@ class MainActivity : AppCompatActivity() {
     private fun formatStatus(msg: String): String =
         msg.trim().replace(Regex("\\s+"), " ").take(160)
 
-    private fun setStatus(msg: String) = runOnUiThread { binding.statusText.text = formatStatus(msg) }
+    private fun setStatus(msg: String) = runOnUiThread {
+        if (!isLiveTextEnabled() || state == State.SETUP) {
+            binding.statusText.visibility = View.GONE
+            return@runOnUiThread
+        }
+        binding.statusText.visibility = View.VISIBLE
+        binding.statusText.text = formatStatus(msg)
+    }
 
     override fun onDestroy() {
         super.onDestroy()

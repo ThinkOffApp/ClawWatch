@@ -11,8 +11,8 @@ android {
         applicationId = "com.thinkoff.clawwatch"
         minSdk = 30  // Wear OS 3 = API 30
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "1.0.0"
     }
 
     buildTypes {
