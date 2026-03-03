@@ -139,25 +139,16 @@ class ClawRunner(private val context: Context) {
         return LIVE_INFO_KEYWORDS.any { lower.contains(it) }
     }
 
-    private val WEATHER_KEYWORDS = setOf("weather", "temperature", "forecast", "rain", "sunny", "cloudy", "wind", "humidity", "hot", "cold", "degrees")
-
     /**
-     * Route to the right search source based on query type.
-     * Weather → wttr.in (free, real-time, no key needed)
-     * Other   → Brave (if key set) or DuckDuckGo
+     * Universal web search: Brave (with key) or DuckDuckGo HTML scraping (free, no key).
+     * Handles weather, news, prices, scores — any live query — without custom modules.
      */
     private fun webSearch(query: String): List<Pair<String, String>> {
-        val lower = query.lowercase()
-        if (WEATHER_KEYWORDS.any { lower.contains(it) }) {
-            val weatherResult = wttrSearch(query)
-            if (weatherResult.isNotEmpty()) return weatherResult
-        }
         val braveKey = getBraveKey()
         return if (!braveKey.isNullOrBlank()) braveSearch(query, braveKey)
-        else duckDuckGoSearch(query)
+        else duckDuckGoHtmlSearch(query)
     }
 
-    // WMO weather code descriptions
     private fun wmoDescription(code: Int) = when(code) {
         0 -> "Clear sky"; 1,2,3 -> "Partly cloudy"
         45,48 -> "Foggy"; 51,53,55 -> "Drizzle"; 61,63,65 -> "Rain"
@@ -165,7 +156,6 @@ class ClawRunner(private val context: Context) {
         else -> "Overcast"
     }
 
-    /** Get current weather from Open-Meteo (free, no API key, real-time). */
     private fun wttrSearch(query: String): List<Pair<String, String>> {
         return try {
             // Extract location from query
@@ -242,36 +232,42 @@ class ClawRunner(private val context: Context) {
         }
     }
 
-    private fun duckDuckGoSearch(query: String): List<Pair<String, String>> {
+    /**
+     * DuckDuckGo HTML search — returns real web results for any query.
+     * No API key needed. Scrapes the HTML search results page.
+     */
+    private fun duckDuckGoHtmlSearch(query: String): List<Pair<String, String>> {
         return try {
             val encoded = URLEncoder.encode(query, "UTF-8")
-            val url = URL("https://api.duckduckgo.com/?q=$encoded&format=json&no_html=1&skip_disambig=1")
+            val url = URL("https://html.duckduckgo.com/html/?q=$encoded")
             val conn = url.openConnection() as HttpURLConnection
-            conn.setRequestProperty("User-Agent", "ClawWatch/1.0")
-            conn.connectTimeout = 8_000
-            conn.readTimeout = 8_000
-
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/91.0 Mobile Safari/537.36")
+            conn.setRequestProperty("Accept", "text/html")
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
             if (conn.responseCode != 200) return emptyList()
 
-            val json = JSONObject(conn.inputStream.bufferedReader().readText())
+            val html = conn.inputStream.bufferedReader().readText()
             val results = mutableListOf<Pair<String, String>>()
 
-            // Abstract (direct answer)
-            val abstract = json.optString("Abstract", "")
-            val abstractTitle = json.optString("Heading", "")
-            if (abstract.isNotBlank()) results.add(Pair(abstractTitle, abstract))
+            // Extract result snippets from DDG HTML
+            val snippetRegex = Regex("""class="result__snippet"[^>]*>(.*?)</a>""", RegexOption.DOT_MATCHES_ALL)
+            val titleRegex   = Regex("""class="result__a"[^>]*>(.*?)</a>""",    RegexOption.DOT_MATCHES_ALL)
+            val snippets = snippetRegex.findAll(html).map {
+                it.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
+            }.filter { it.isNotBlank() }.take(3).toList()
+            val titles = titleRegex.findAll(html).map {
+                it.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
+            }.filter { it.isNotBlank() }.take(3).toList()
 
-            // Related topics
-            val topics = json.optJSONArray("RelatedTopics") ?: JSONArray()
-            for (i in 0 until minOf(topics.length(), 3 - results.size)) {
-                val t = topics.optJSONObject(i) ?: continue
-                val text = t.optString("Text", "")
-                if (text.isNotBlank()) results.add(Pair("", text))
+            snippets.forEachIndexed { i, snippet ->
+                val title = titles.getOrElse(i) { "" }
+                results.add(Pair(title, snippet))
             }
-
-            results.filter { it.second.isNotBlank() }.take(3)
+            Log.i(TAG, "DDG HTML: ${results.size} results for '$query'")
+            results
         } catch (e: Exception) {
-            Log.w(TAG, "DDG search failed: ${e.message}")
+            Log.w(TAG, "DDG HTML search failed: ${e.message}")
             emptyList()
         }
     }
