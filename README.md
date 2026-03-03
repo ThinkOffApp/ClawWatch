@@ -1,5 +1,12 @@
 <p align="center">
-  <img src="assets/logo/clawwatch-logo.jpeg" alt="ClawWatch logo" width="280">
+  <a href="assets/videos/clawwatch-launch-1.0.0.mp4">
+    <img src="assets/screenshots/watch-03.png" alt="ClawWatch 1.0.0 launch video" width="180">
+  </a>
+</p>
+<p align="center">
+  <a href="assets/videos/clawwatch-launch-1.0.0.mp4"><strong>▶ Watch ClawWatch 1.0.0 launch video</strong></a>
+  ·
+  <a href="https://x.com/i/status/2028946464119165140">X post</a>
 </p>
 
 # ClawWatch
@@ -10,7 +17,7 @@ Tap. Speak. Get an answer. No cloud STT, no phone dependency, no latency from mi
 
 ClawWatch runs [NullClaw](https://github.com/nullclaw/nullclaw) — a 2.8 MB static ARM binary — directly on a Galaxy Watch, paired with offline speech recognition (Vosk) and the built-in TTS engine. The agent talks to Claude Opus 4.6 (or any model you configure) and speaks the response back through the watch speaker.
 
-**[Watch the first live demo on X](https://x.com/petruspennanen/status/2028503452788166751)**
+**[Watch the ClawWatch 1.0.0 launch video](assets/videos/clawwatch-launch-1.0.0.mp4)**
 
 ## Screenshots
 
