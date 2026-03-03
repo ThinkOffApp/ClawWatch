@@ -106,10 +106,16 @@
 
     <hr class="section-divider">
 
-    <label>Brave Search API Key <span style="color:#6b7280;font-weight:400">(optional, for RAG)</span></label>
+    <label>Tavily API Key <span style="color:#6b7280;font-weight:400">(recommended for RAG)</span></label>
+    <input id="tavilyKey" type="password" placeholder="tvly-… (free at tavily.com)" autocomplete="off" />
+    <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
+      Free: 1,000 searches/month. Built for AI RAG. Handles weather, news, finance, anything.
+    </p>
+
+    <label>Brave Search API Key <span style="color:#6b7280;font-weight:400">(alternative)</span></label>
     <input id="braveKey" type="password" placeholder="BSA… (free tier at brave.com/search/api)" autocomplete="off" />
     <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
-      Free: 2,000 searches/month. Without this, falls back to DuckDuckGo (no key needed).
+      Free: 2,000 searches/month.
     </p>
   </div>
 
@@ -195,6 +201,7 @@ function setRag(mode) {
 async function pushAll() {
   const settings = {
     anthropic_api_key: document.getElementById('apiKey').value.trim() || undefined,
+    tavily_api_key: document.getElementById('tavilyKey').value.trim() || undefined,
     brave_api_key: document.getElementById('braveKey').value.trim() || undefined,
     model: document.getElementById('model').value,
     system_prompt: document.getElementById('systemPrompt').value,

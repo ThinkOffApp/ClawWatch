@@ -35,6 +35,7 @@ class ClawRunner(private val context: Context) {
         private const val PREF_MAX_TOKENS = "max_tokens"
         private const val PREF_RAG_MODE = "rag_mode"         // "off" | "kotlin" | "opus_tool"
         private const val PREF_BRAVE_KEY = "brave_api_key"
+        private const val PREF_TAVILY_KEY = "tavily_api_key"
 
         // Keywords that suggest the query needs current/live information
         private val LIVE_INFO_KEYWORDS = setOf(
@@ -67,6 +68,7 @@ class ClawRunner(private val context: Context) {
 
     fun saveApiKey(key: String) = prefs.edit().putString(PREF_API_KEY, key).apply()
     fun saveBraveKey(key: String) = prefs.edit().putString(PREF_BRAVE_KEY, key).apply()
+    fun saveTavilyKey(key: String) = prefs.edit().putString(PREF_TAVILY_KEY, key).apply()
     fun saveModel(model: String) = prefs.edit().putString(PREF_MODEL, model).apply()
     fun saveSystemPrompt(prompt: String) = prefs.edit().putString(PREF_SYSTEM_PROMPT, prompt).apply()
     fun saveMaxTokens(n: Int) = prefs.edit().putInt(PREF_MAX_TOKENS, n).apply()
@@ -75,6 +77,7 @@ class ClawRunner(private val context: Context) {
     fun hasApiKey(): Boolean = prefs.getString(PREF_API_KEY, null)?.isNotBlank() == true
     private fun getApiKey(): String? = prefs.getString(PREF_API_KEY, null)
     private fun getBraveKey(): String? = prefs.getString(PREF_BRAVE_KEY, null)
+    private fun getTavilyKey(): String? = prefs.getString(PREF_TAVILY_KEY, null)
     private fun getModel(): String = prefs.getString(PREF_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL
     private fun getSystemPrompt(): String = prefs.getString(PREF_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT) ?: DEFAULT_SYSTEM_PROMPT
     private fun getMaxTokens(): Int = prefs.getInt(PREF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
@@ -140,13 +143,66 @@ class ClawRunner(private val context: Context) {
     }
 
     /**
-     * Universal web search: Brave (with key) or DuckDuckGo HTML scraping (free, no key).
-     * Handles weather, news, prices, scores — any live query — without custom modules.
+     * Universal web search — priority: Tavily → Brave → nothing.
+     * Tavily: free 1000/mo, built for AI RAG, get key at tavily.com
+     * Brave:  free 2000/mo, get key at brave.com/search/api
+     * Set keys in admin panel at http://localhost:4747
      */
     private fun webSearch(query: String): List<Pair<String, String>> {
+        val tavilyKey = getTavilyKey()
+        if (!tavilyKey.isNullOrBlank()) return tavilySearch(query, tavilyKey)
         val braveKey = getBraveKey()
-        return if (!braveKey.isNullOrBlank()) braveSearch(query, braveKey)
-        else duckDuckGoHtmlSearch(query)
+        if (!braveKey.isNullOrBlank()) return braveSearch(query, braveKey)
+        Log.w(TAG, "No search API key set — add Tavily or Brave key in admin panel")
+        return emptyList()
+    }
+
+    /** Tavily AI search — designed for RAG, returns clean snippets for any query. */
+    private fun tavilySearch(query: String, apiKey: String): List<Pair<String, String>> {
+        return try {
+            val body = JSONObject().apply {
+                put("api_key", apiKey)
+                put("query", query)
+                put("search_depth", "basic")
+                put("max_results", 3)
+                put("include_answer", true)
+            }.toString()
+
+            val url = URL("https://api.tavily.com/search")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+            conn.doOutput = true
+            OutputStreamWriter(conn.outputStream).use { it.write(body) }
+
+            if (conn.responseCode != 200) {
+                Log.w(TAG, "Tavily error ${conn.responseCode}")
+                return emptyList()
+            }
+
+            val json = JSONObject(conn.inputStream.bufferedReader().readText())
+            val results = mutableListOf<Pair<String, String>>()
+
+            // Direct answer if available
+            val answer = json.optString("answer", "")
+            if (answer.isNotBlank()) results.add(Pair("Direct answer", answer))
+
+            // Web results
+            val items = json.optJSONArray("results") ?: JSONArray()
+            for (i in 0 until minOf(items.length(), 3 - results.size)) {
+                val r = items.getJSONObject(i)
+                val title = r.optString("title", "")
+                val content = r.optString("content", "").take(200)
+                if (content.isNotBlank()) results.add(Pair(title, content))
+            }
+            Log.i(TAG, "Tavily: ${results.size} results for '$query'")
+            results
+        } catch (e: Exception) {
+            Log.w(TAG, "Tavily failed: ${e.message}")
+            emptyList()
+        }
     }
 
     private fun wmoDescription(code: Int) = when(code) {
