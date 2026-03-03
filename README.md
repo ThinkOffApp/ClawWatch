@@ -16,11 +16,15 @@ ClawWatch runs [NullClaw](https://github.com/nullclaw/nullclaw) — a 2.8 MB sta
 
 | Idle | Listening |
 |---|---|
-| ![ClawWatch idle state](assets/screenshots/watch-02.png) | ![ClawWatch listening state](assets/screenshots/watch-03.png) |
+| <img src="assets/screenshots/watch-02.png" alt="ClawWatch idle state" width="220"/> | <img src="assets/screenshots/watch-03.png" alt="ClawWatch listening state" width="220"/> |
 
 | Thinking | Speaking |
 |---|---|
-| ![ClawWatch thinking state](assets/screenshots/watch-04.png) | ![ClawWatch speaking state](assets/screenshots/watch-01.png) |
+| <img src="assets/screenshots/watch-04.png" alt="ClawWatch thinking state" width="220"/> | <img src="assets/screenshots/watch-01.png" alt="ClawWatch speaking state" width="220"/> |
+
+## Architecture
+
+![ClawWatch architecture](https://raw.githubusercontent.com/ThinkOffApp/ClawWatch/claudemm/architecture-diagram/docs/architecture.png)
 
 ---
 
