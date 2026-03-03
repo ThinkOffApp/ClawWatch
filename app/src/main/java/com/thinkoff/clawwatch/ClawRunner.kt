@@ -162,7 +162,7 @@ class ClawRunner(private val context: Context) {
         return try {
             // Extract location from query — strip weather keywords
             val location = query.lowercase()
-                .replace(Regex("(weather|forecast|temperature|what'?s? (the|is)?|in|today|now|currently|right now)"), " ")
+                .replace(Regex("\\b(weather|forecast|temperature|what's?|what is|the|is|in|today|tonight|now|currently|right now|please|tell me)\\b"), " ")
                 .trim().replace(Regex("\\s+"), "+").ifBlank { "Berlin" }
 
             val url = URL("https://wttr.in/$location?format=j1")
