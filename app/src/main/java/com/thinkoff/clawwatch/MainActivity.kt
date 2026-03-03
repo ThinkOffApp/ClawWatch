@@ -13,7 +13,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -472,6 +471,7 @@ class MainActivity : AppCompatActivity() {
             binding.setupPanel.visibility  = if (s == State.SETUP)    View.VISIBLE else View.GONE
             binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
             updateAvatar(s)
+            updateActionIndicator(s)
             binding.fab.contentDescription = when (s) {
                 State.IDLE      -> "Tap to talk"
                 State.LISTENING -> "Tap to stop"
@@ -482,19 +482,27 @@ class MainActivity : AppCompatActivity() {
                 State.SETUP     -> ""
             }
             binding.fab.isEnabled = s != State.SETUP
-            binding.fab.setImageDrawable(
-                AppCompatResources.getDrawable(
-                    this,
-                    when (s) {
-                        State.IDLE -> android.R.drawable.ic_btn_speak_now
-                        State.LISTENING -> android.R.drawable.presence_audio_online
-                        State.THINKING, State.SEARCHING, State.SPEAKING -> android.R.drawable.ic_media_pause
-                        State.ERROR -> android.R.drawable.ic_popup_sync
-                        State.SETUP -> android.R.drawable.ic_btn_speak_now
-                    }
-                )
-            )
+            binding.fab.text = when (s) {
+                State.IDLE -> "◉"
+                State.LISTENING -> "■"
+                State.THINKING, State.SEARCHING, State.SPEAKING -> "■"
+                State.ERROR -> "↻"
+                State.SETUP -> ""
+            }
         }
+    }
+
+    private fun updateActionIndicator(s: State) {
+        binding.actionIndicator.text = when (s) {
+            State.IDLE -> "◎"
+            State.LISTENING -> "●"
+            State.THINKING -> "⋯"
+            State.SEARCHING -> "⌕"
+            State.SPEAKING -> "»"
+            State.ERROR -> "!"
+            State.SETUP -> "?"
+        }
+        binding.actionIndicator.visibility = if (s == State.SETUP) View.INVISIBLE else View.VISIBLE
     }
 
     private fun applyConversationScreenPolicy(state: State) {

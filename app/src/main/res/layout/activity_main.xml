@@ -120,7 +120,21 @@
                 android:gravity="center"
                 android:text="🐜"
                 android:textColor="#D4A5E9"
-                android:textSize="54sp" />
+                android:textSize="60sp" />
+
+            <TextView
+                android:id="@+id/actionIndicator"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="end|top"
+                android:layout_marginTop="22dp"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/action_indicator_bg"
+                android:gravity="center"
+                android:text="◎"
+                android:textColor="#0A0A0F"
+                android:textSize="14sp"
+                android:textStyle="bold" />
         </FrameLayout>
 
         <FrameLayout
@@ -139,20 +153,25 @@
                 app:trackColor="#00000000"
                 app:trackThickness="3dp" />
 
-            <androidx.appcompat.widget.AppCompatImageButton
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/fab"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
                 android:layout_gravity="center"
                 android:contentDescription="Tap to talk"
                 android:background="@drawable/action_bubble_bg"
                 android:elevation="0dp"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp"
-                android:scaleType="centerInside"
-                android:src="@android:drawable/ic_btn_speak_now"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:padding="0dp"
                 android:stateListAnimator="@null"
-                android:tint="#0A0A0F" />
+                android:text="◉"
+                android:textAllCaps="false"
+                android:textColor="#0A0A0F"
+                android:textSize="18sp"
+                android:textStyle="bold" />
         </FrameLayout>
 
         <!-- Legacy bound views kept hidden for compatibility -->

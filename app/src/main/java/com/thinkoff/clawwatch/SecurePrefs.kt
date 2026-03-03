@@ -26,25 +26,36 @@ object SecurePrefs {
         "avatar_type"
     )
 
-    fun watch(context: Context): SharedPreferences {
-        val secure = try {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-            EncryptedSharedPreferences.create(
-                context,
-                SECURE_PREFS_NAME,
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-        } catch (e: Exception) {
-            Log.w(TAG, "EncryptedSharedPreferences unavailable, falling back to plaintext", e)
-            return context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
-        }
+    @Volatile
+    private var cachedWatchPrefs: SharedPreferences? = null
 
-        migrateLegacyIfPresent(context, secure)
-        return secure
+    fun watch(context: Context): SharedPreferences {
+        cachedWatchPrefs?.let { return it }
+        val appContext = context.applicationContext
+
+        return synchronized(this) {
+            cachedWatchPrefs?.let { return@synchronized it }
+
+            val secure = try {
+                val masterKey = MasterKey.Builder(appContext)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                EncryptedSharedPreferences.create(
+                    appContext,
+                    SECURE_PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "EncryptedSharedPreferences unavailable, falling back to plaintext", e)
+                appContext.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+            }
+
+            migrateLegacyIfPresent(appContext, secure)
+            cachedWatchPrefs = secure
+            secure
+        }
     }
 
     private fun migrateLegacyIfPresent(context: Context, secure: SharedPreferences) {

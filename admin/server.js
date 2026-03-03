@@ -1,5 +1,5 @@
 const express = require('express');
-const { exec, execFileSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -269,16 +269,32 @@ app.post('/api/push/config', (req, res) => {
 
 app.post('/api/deploy', (req, res) => {
   res.json({ ok: true, message: 'Build started — check terminal for progress (~30s)' });
-  const targetArg = watchTarget && /^\d+\.\d+\.\d+\.\d+:\d+$/.test(watchTarget)
-    ? `-s ${watchTarget} `
-    : '';
-  exec(
-    `JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew assembleDebug && adb ${targetArg}install -r app/build/outputs/apk/debug/app-debug.apk`,
-    { cwd: path.join(__dirname, '..') },
-    (err, stdout, stderr) => {
-      console.log(err ? `Deploy FAILED:\n${stderr}` : 'Deploy OK ✓');
+  setImmediate(() => {
+    try {
+      const projectDir = path.join(__dirname, '..');
+      const gradlewPath = path.join(projectDir, 'gradlew');
+
+      execFileSync(gradlewPath, ['assembleDebug'], {
+        cwd: projectDir,
+        timeout: 600_000,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          JAVA_HOME: '/Applications/Android Studio.app/Contents/jbr/Contents/Home'
+        }
+      });
+
+      const installArgs = [];
+      if (watchTarget && /^\d+\.\d+\.\d+\.\d+:\d+$/.test(watchTarget)) {
+        installArgs.push('-s', watchTarget);
+      }
+      installArgs.push('install', '-r', 'app/build/outputs/apk/debug/app-debug.apk');
+      execFileSync('adb', installArgs, { cwd: projectDir, timeout: 60_000, encoding: 'utf8' });
+      console.log('Deploy OK ✓');
+    } catch (err) {
+      console.log(`Deploy FAILED:\n${err.message}`);
     }
-  );
+  });
 });
 
 // ── Log capture ───────────────────────────────────────

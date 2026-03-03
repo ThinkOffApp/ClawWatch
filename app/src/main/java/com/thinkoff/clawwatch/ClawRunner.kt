@@ -34,7 +34,7 @@ class ClawRunner(private val context: Context) {
         private const val PREF_MODEL = "model"
         private const val PREF_SYSTEM_PROMPT = "system_prompt"
         private const val PREF_MAX_TOKENS = "max_tokens"
-        private const val PREF_RAG_MODE = "rag_mode"         // "off" | "kotlin" | "opus_tool"
+        private const val PREF_RAG_MODE = "rag_mode"         // "off" | "kotlin" | "always" | "opus_tool"
         private const val PREF_BRAVE_KEY = "brave_api_key"
         private const val PREF_TAVILY_KEY = "tavily_api_key"
 
@@ -71,6 +71,8 @@ class ClawRunner(private val context: Context) {
     private val prefs by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SecurePrefs.watch(context) }
     private val conversationLock = Any()
     private val conversation = ArrayDeque<ChatTurn>()
+    @Volatile
+    private var conversationConfigFingerprint: String? = null
 
     // ── Config accessors ─────────────────────────────────────────────────────
 
@@ -370,11 +372,14 @@ class ClawRunner(private val context: Context) {
         val apiKey = getApiKey()
             ?: return@withContext Result.failure(RuntimeException("API key missing"))
 
-        Log.i(TAG, "Query: '${prompt.take(60)}' rag=${getRagMode()}")
+        val ragMode = getRagMode()
+        clearConversationIfConfigChanged(ragMode)
+        Log.i(TAG, "Query: '${prompt.take(60)}' rag=$ragMode")
 
-        return@withContext when (getRagMode()) {
+        return@withContext when (ragMode) {
             "opus_tool" -> queryWithOpusTool(prompt, apiKey)
-            "kotlin"    -> queryWithKotlinRag(prompt, apiKey)
+            "always"    -> queryWithKotlinRag(prompt, apiKey, forceSearch = true)
+            "kotlin"    -> queryWithKotlinRag(prompt, apiKey, forceSearch = false)
             else        -> queryDirect(prompt, apiKey)
         }
     }
@@ -394,11 +399,14 @@ class ClawRunner(private val context: Context) {
 
     // ── Mode 2: Kotlin RAG — pre-search + inject ──────────────────────────────
 
-    private suspend fun queryWithKotlinRag(prompt: String, apiKey: String): Result<String> =
+    private suspend fun queryWithKotlinRag(
+        prompt: String,
+        apiKey: String,
+        forceSearch: Boolean
+    ): Result<String> =
         withContext(Dispatchers.IO) {
             var systemPrompt = getSystemPrompt()
-            val forceSearchWithTavily = !getTavilyKey().isNullOrBlank()
-            if (forceSearchWithTavily || needsWebSearch(prompt)) {
+            if (forceSearch || needsWebSearch(prompt)) {
                 Log.i(TAG, "Kotlin RAG: searching for '$prompt'")
                 val results = webSearch(prompt)
                 if (results.isNotEmpty()) {
@@ -621,6 +629,28 @@ class ClawRunner(private val context: Context) {
                 put("role", "user")
                 put("content", userMessage)
             })
+        }
+    }
+
+    private fun clearConversationIfConfigChanged(ragMode: String) {
+        val fingerprint = buildString {
+            append(getModel())
+            append('\u001F')
+            append(getSystemPrompt())
+            append('\u001F')
+            append(ragMode)
+        }
+        synchronized(conversationLock) {
+            val previous = conversationConfigFingerprint
+            if (previous == null) {
+                conversationConfigFingerprint = fingerprint
+                return
+            }
+            if (previous != fingerprint) {
+                conversation.clear()
+                conversationConfigFingerprint = fingerprint
+                Log.i(TAG, "Conversation context cleared due to config change")
+            }
         }
     }
 
