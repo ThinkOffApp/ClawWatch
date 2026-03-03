@@ -11,6 +11,7 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.zip.GZIPInputStream
 
 /**
  * ClawRunner — manages NullClaw binary + Anthropic API calls with optional RAG.
@@ -21,14 +22,14 @@ import java.net.URLEncoder
  *  - OPUS_TOOL: use Anthropic tool_use to let Claude call a web_search tool,
  *               execute the search on the Kotlin side, return results, get final answer.
  *
- * Config is read from SharedPreferences (set via admin panel / set_key.sh).
+ * Config is read from encrypted SharedPreferences (migrated from legacy prefs if present).
  */
 class ClawRunner(private val context: Context) {
 
     companion object {
         private const val TAG = "ClawRunner"
         private const val CONFIG_NAME = "nullclaw.json"
-        private const val PREFS_NAME = "clawwatch_prefs"
+        private const val CONFIG_FALLBACK_NAME = "nullclaw.json.example"
         private const val PREF_API_KEY = "anthropic_api_key"
         private const val PREF_MODEL = "model"
         private const val PREF_SYSTEM_PROMPT = "system_prompt"
@@ -62,7 +63,7 @@ class ClawRunner(private val context: Context) {
     private val nullclawConfigFile get() = File(homeDir, ".nullclaw/config.json")
     private val caBundleFile get() = File(filesDir, "ca-certificates.crt")
 
-    private val prefs get() = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs get() = SecurePrefs.watch(context)
 
     // ── Config accessors ─────────────────────────────────────────────────────
 
@@ -88,7 +89,13 @@ class ClawRunner(private val context: Context) {
     suspend fun ensureInstalled() = withContext(Dispatchers.IO) {
         Log.i(TAG, "NullClaw binary: ${binaryFile.absolutePath} (exists: ${binaryFile.exists()})")
         if (!configFile.exists()) {
-            context.assets.open(CONFIG_NAME).use { it.copyTo(configFile.outputStream()) }
+            val assetName = try {
+                context.assets.open(CONFIG_NAME).close()
+                CONFIG_NAME
+            } catch (_: Exception) {
+                CONFIG_FALLBACK_NAME
+            }
+            context.assets.open(assetName).use { it.copyTo(configFile.outputStream()) }
         }
         writeNullclawHomeConfig()
         buildCaBundle()
@@ -273,7 +280,7 @@ class ClawRunner(private val context: Context) {
 
             if (conn.responseCode != 200) return emptyList()
 
-            val json = JSONObject(conn.inputStream.bufferedReader().readText())
+            val json = JSONObject(readResponseBody(conn))
             val results = json.optJSONObject("web")?.optJSONArray("results") ?: return emptyList()
             (0 until minOf(results.length(), 3)).map { i ->
                 val r = results.getJSONObject(i)
@@ -286,6 +293,13 @@ class ClawRunner(private val context: Context) {
             Log.w(TAG, "Brave search failed: ${e.message}")
             emptyList()
         }
+    }
+
+    private fun readResponseBody(conn: HttpURLConnection): String {
+        val input = conn.inputStream
+        val isGzip = (conn.contentEncoding ?: "").contains("gzip", ignoreCase = true)
+        val stream = if (isGzip) GZIPInputStream(input) else input
+        return stream.bufferedReader().use { it.readText() }
     }
 
     /**

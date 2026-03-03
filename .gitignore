@@ -11,6 +11,7 @@ local.properties
 
 # API keys — never commit
 app/src/main/assets/nullclaw.json
+admin/.admin-state.json
 
 # NullClaw binary — built locally, too large for git
 app/src/main/assets/nullclaw

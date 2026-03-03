@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main_phone)
 
         syncManager = SyncManager(this)
-        prefs = getSharedPreferences("phone_prefs", MODE_PRIVATE)
+        prefs = SecurePrefs.phone(this)
 
         bindViews()
         loadSavedPrefs()

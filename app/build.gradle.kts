@@ -18,7 +18,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
@@ -70,4 +73,6 @@ dependencies {
 
     // Wearable Data Layer — receive config from phone companion app
     implementation(libs.play.services.wearable)
+    // Encrypted key/config storage on watch
+    implementation(libs.security.crypto)
 }

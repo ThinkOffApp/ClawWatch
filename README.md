@@ -116,6 +116,19 @@ That's it. Open ClawWatch on the watch.
 
 The watch speaks the response aloud via the built-in speaker.
 
+## Watch UI Spec (V1)
+
+- Layout after splash: `avatar` + one adaptive button below it.
+- State model: `idle`, `listening`, `thinking`, `searching`, `speaking`, `error`.
+- Adaptive button behavior:
+  - `idle` -> tap starts listening
+  - `listening` -> tap stops listening
+  - `thinking/searching/speaking` -> tap cancels current flow
+  - `error` -> tap retries (starts listening)
+- Auto-listen: after speaking finishes, mic opens automatically for a short follow-up window; if no speech is detected, it returns to idle.
+- Low battery rule: when battery is below 20%, avatar turns greyer and avatar animations stop.
+- Avatar options: `ant`, `lobster`, `robot`, `boy`, `girl`.
+
 ## Admin Panel
 
 A local web UI for configuring the watch agent from your Mac — no ADB commands needed after initial install.

@@ -36,6 +36,7 @@ class VoiceEngine(private val context: Context) {
     private var tts: TextToSpeech? = null
     private var speechService: SpeechService? = null
     private var voskModel: Model? = null
+    private var recognizer: Recognizer? = null
 
     // ── TTS ──────────────────────────────────────────────
 
@@ -114,7 +115,8 @@ class VoiceEngine(private val context: Context) {
 
     fun startListening(onResult: (String) -> Unit, onPartial: (String) -> Unit) {
         val model = voskModel ?: return
-        val recognizer = Recognizer(model, SAMPLE_RATE)
+        stopListening()
+        recognizer = Recognizer(model, SAMPLE_RATE)
         speechService = SpeechService(recognizer, SAMPLE_RATE)
         speechService?.startListening(object : RecognitionListener {
             override fun onResult(hypothesis: String?) {
@@ -137,7 +139,13 @@ class VoiceEngine(private val context: Context) {
 
     fun stopListening() {
         speechService?.stop()
+        speechService?.shutdown()
         speechService = null
+        try {
+            recognizer?.close()
+        } catch (_: Exception) {
+        }
+        recognizer = null
     }
 
     // Fix #9: use JSONObject instead of regex
@@ -153,7 +161,13 @@ class VoiceEngine(private val context: Context) {
     // ── Cleanup ──────────────────────────────────────────
 
     fun release() {
-        speechService?.shutdown()
+        stopListening()
+        try {
+            voskModel?.close()
+        } catch (_: Exception) {
+        }
+        voskModel = null
         tts?.shutdown()
+        tts = null
     }
 }

@@ -27,11 +27,6 @@
             </intent-filter>
         </activity>
 
-        <service
-            android:name=".ClawService"
-            android:foregroundServiceType="microphone"
-            android:exported="false" />
-
         <!-- Receives config sync from companion phone app via Wearable Data Layer -->
         <service
             android:name=".ConfigSyncService"
