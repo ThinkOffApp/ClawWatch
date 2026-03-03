@@ -368,7 +368,7 @@ class ClawRunner(private val context: Context) {
 
     suspend fun query(prompt: String): Result<String> = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
-            ?: return@withContext Result.failure(RuntimeException("No API key — run ./set_key.sh"))
+            ?: return@withContext Result.failure(RuntimeException("API key missing"))
 
         Log.i(TAG, "Query: '${prompt.take(60)}' rag=${getRagMode()}")
 

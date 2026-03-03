@@ -162,8 +162,8 @@ function pushPrefsToWatch(settings) {
   const tmpFile = path.join(os.tmpdir(), 'clawwatch_prefs.xml');
   fs.writeFileSync(tmpFile, buildPrefsXml(settings), { mode: 0o600 });
   adb(['push', tmpFile, '/data/local/tmp/clawwatch_prefs.xml']);
-  adb(['shell', 'run-as', PKG, 'sh', '-c', `mkdir -p /data/data/${PKG}/shared_prefs`]);
-  adb(['shell', 'run-as', PKG, 'sh', '-c', `cp /data/local/tmp/clawwatch_prefs.xml ${PREFS_PATH}`]);
+  adb(['shell', 'run-as', PKG, 'mkdir', '-p', `/data/data/${PKG}/shared_prefs`]);
+  adb(['shell', 'run-as', PKG, 'cp', '/data/local/tmp/clawwatch_prefs.xml', PREFS_PATH]);
   adb(['shell', 'rm', '/data/local/tmp/clawwatch_prefs.xml']);
   fs.unlinkSync(tmpFile);
 }
@@ -250,8 +250,8 @@ app.post('/api/push/config', (req, res) => {
     const tmpFile = path.join(os.tmpdir(), 'nullclaw_tmp.json');
     fs.writeFileSync(tmpFile, JSON.stringify(config, null, 2));
     adb(['push', tmpFile, '/data/local/tmp/nullclaw_tmp.json']);
-    adb(['shell', 'run-as', PKG, 'sh', '-c', `mkdir -p /data/data/${PKG}/files`]);
-    adb(['shell', 'run-as', PKG, 'sh', '-c', `cp /data/local/tmp/nullclaw_tmp.json /data/data/${PKG}/files/nullclaw.json`]);
+    adb(['shell', 'run-as', PKG, 'mkdir', '-p', `/data/data/${PKG}/files`]);
+    adb(['shell', 'run-as', PKG, 'cp', '/data/local/tmp/nullclaw_tmp.json', `/data/data/${PKG}/files/nullclaw.json`]);
     adb(['shell', 'rm', '/data/local/tmp/nullclaw_tmp.json']);
     fs.unlinkSync(tmpFile);
     res.json({ ok: true, message: 'Config pushed — restart ClawWatch on the watch' });

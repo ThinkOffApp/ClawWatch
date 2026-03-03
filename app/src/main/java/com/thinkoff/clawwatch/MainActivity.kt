@@ -129,7 +129,7 @@ class MainActivity : AppCompatActivity() {
 
         if (!clawRunner.hasApiKey()) {
             setState(State.SETUP)
-            setStatus("No key — run set_key.sh")
+            setStatus("API key missing")
             return
         }
 
