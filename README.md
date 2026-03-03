@@ -15,12 +15,12 @@ ClawWatch runs [NullClaw](https://github.com/nullclaw/nullclaw) — a 2.8 MB sta
 ## Screenshots
 
 <p align="center">
-  <img src="assets/screenshots/watch-02.png" alt="Idle" width="120">
-  <img src="assets/screenshots/watch-03.png" alt="Listening" width="120">
-  <img src="assets/screenshots/watch-04.png" alt="Thinking" width="120">
-  <img src="assets/screenshots/watch-01.png" alt="Speaking" width="120">
+  <img src="assets/screenshots/watch-02.png" alt="Blank" width="120">
+  <img src="assets/screenshots/watch-03.png" alt="Ear" width="120">
+  <img src="assets/screenshots/watch-04.png" alt="Cloud" width="120">
+  <img src="assets/screenshots/watch-01.png" alt="Dots" width="120">
 </p>
-<p align="center"><i>Idle &nbsp;&bull;&nbsp; Listening &nbsp;&bull;&nbsp; Thinking &nbsp;&bull;&nbsp; Speaking</i></p>
+<p align="center"><i>Blank &nbsp;&bull;&nbsp; Ear &nbsp;&bull;&nbsp; Cloud &nbsp;&bull;&nbsp; Dots</i></p>
 
 ## Architecture
 
