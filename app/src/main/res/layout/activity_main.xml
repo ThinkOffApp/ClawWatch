@@ -139,18 +139,20 @@
                 app:trackColor="#00000000"
                 app:trackThickness="3dp" />
 
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/fab"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_gravity="center"
-                android:elevation="0dp"
                 android:contentDescription="Tap to talk"
-                app:borderWidth="0dp"
-                app:fabSize="mini"
-                app:srcCompat="@android:drawable/ic_btn_speak_now"
-                app:backgroundTint="#D4A5E9"
-                app:pressedTranslationZ="0dp" />
+                android:background="@drawable/action_bubble_bg"
+                android:elevation="0dp"
+                android:foreground="?attr/selectableItemBackgroundBorderless"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_btn_speak_now"
+                android:stateListAnimator="@null"
+                android:tint="#0A0A0F" />
         </FrameLayout>
 
         <!-- Legacy bound views kept hidden for compatibility -->
