@@ -14,7 +14,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.GestureDetector
-import android.view.MotionEvent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
