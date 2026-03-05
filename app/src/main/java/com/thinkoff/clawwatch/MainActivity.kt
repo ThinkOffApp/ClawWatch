@@ -508,7 +508,7 @@ class MainActivity : AppCompatActivity() {
                 avatarAnimator = ValueAnimator.ofFloat(1.0f, 0.75f, 1.0f).apply {
                     duration = 700L
                     repeatCount = ValueAnimator.INFINITE
-                    addUpdateListener { binding.avatarFace.alpha = it.animatedValue as Float }
+                    // addUpdateListener { binding.avatarFace.alpha = it.animatedValue as Float }
                     start()
                 }
             }
