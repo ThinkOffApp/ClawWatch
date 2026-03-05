@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp" android:height="200dp"
+    android:viewportWidth="200" android:viewportHeight="200">
+    <group android:name="status_ring" android:pivotX="100" android:pivotY="100">
+        <path android:fillColor="#00000000" android:strokeColor="#2196F3" android:strokeWidth="4"
+            android:pathData="M 100 20 A 80 80 0 1 1 99.99 20" />
+    </group>
+    <group android:name="head_group" android:pivotX="100" android:pivotY="100">
+        <path android:fillColor="#1976D2" android:pathData="M50,180 C50,150 70,140 100,140 C130,140 150,150 150,180 Z" />
+        <path android:fillColor="#FFCCBC" android:pathData="M65,70 C65,40 135,40 135,70 C135,120 115,130 100,130 C85,130 65,120 65,70 Z" />
+        <path android:fillColor="#3E2723" android:pathData="M60,70 C60,20 140,20 140,70 Q130,40 100,45 Q80,45 60,70 Z" />
+        <path android:fillColor="#FBE9E7" android:pathData="M55,90 A8,8 0 1,1 55,89.9 Z" />
+        <path android:fillColor="#FBE9E7" android:pathData="M145,90 A8,8 0 1,1 145,89.9 Z" />
+
+        <group android:name="eyes" android:pivotX="100" android:pivotY="85">
+            <path android:fillColor="#212121" android:pathData="M80,85 A5,5 0 1,1 80,84.9 Z" />
+            <path android:fillColor="#FFFFFF" android:pathData="M81,83 A1.5,1.5 0 1,1 81,82.9 Z" />
+            <path android:fillColor="#212121" android:pathData="M120,85 A5,5 0 1,1 120,84.9 Z" />
+            <path android:fillColor="#FFFFFF" android:pathData="M121,83 A1.5,1.5 0 1,1 121,82.9 Z" />
+        </group>
+        
+        <group android:name="mouth" android:pivotX="100" android:pivotY="110">
+            <path android:fillColor="#D84315" android:pathData="M90,108 Q100,118 110,108 Q100,112 90,108 Z" />
+        </group>
+    </group>
+</vector>

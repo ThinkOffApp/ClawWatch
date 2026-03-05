@@ -13,6 +13,8 @@ import android.view.ViewConfiguration
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.GestureDetector
+import android.view.MotionEvent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -46,6 +48,7 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_LIVE_TEXT_ENABLED = "live_text_enabled"
         private const val ACCENT_COLOR = 0xFFD4A5E9.toInt()
         private const val LOW_BATTERY_COLOR = 0xFF9CA3AF.toInt()
+        private val AVATARS = listOf("ant", "lobster", "robot", "boy", "girl")
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -56,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private enum class AvatarType { ANT, LOBSTER, ROBOT, BOY, GIRL }
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
+    private lateinit var gestureDetector: GestureDetector
+    private var currentAvatarIndex = 0
 
     private var state = State.SETUP
     private var queryJob: Job? = null
@@ -126,12 +131,55 @@ class MainActivity : AppCompatActivity() {
 
         clawRunner = ClawRunner(this)
         voiceEngine = VoiceEngine(this)
+        
+        val prefs = getSharedPreferences("claw_prefs", 0)
+        currentAvatarIndex = prefs.getInt("avatar_idx", 0)
+
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+                if (e1 != null && e1.x - e2.x > 50 && Math.abs(velocityX) > 200) {
+                    // Swiped Left
+                    currentAvatarIndex = (currentAvatarIndex + 1) % AVATARS.size
+                    prefs.edit().putInt("avatar_idx", currentAvatarIndex).apply()
+                    updateAvatarDrawable(state)
+                    return true
+                }
+                return false
+            }
+        })
 
         binding.fab.setOnClickListener { onFabTapped() }
         binding.saveKeyBtn.setOnClickListener { onSaveKey() }
         setupAvatarSwipeSwitch()
 
         lifecycleScope.launch { initialise() }
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun updateAvatarDrawable(s: State) {
+        if (s == State.SETUP) return
+
+        val charName = AVATARS[currentAvatarIndex]
+        val stateName = when(s) {
+            State.IDLE -> "idle"
+            State.LISTENING -> "listening"
+            State.THINKING -> "thinking"
+            State.SPEAKING -> "speaking"
+            else -> "idle"
+        }
+
+        val resName = "avd_avatar_${charName}_${stateName}"
+        val resId = resources.getIdentifier(resName, "drawable", packageName)
+
+        if (resId != 0) {
+            val drawable = ContextCompat.getDrawable(this, resId) as? android.graphics.drawable.AnimatedVectorDrawable
+            binding.avatarView.setImageDrawable(drawable)
+            drawable?.start()
+        }
     }
 
     private suspend fun initialise() {
@@ -339,6 +387,7 @@ class MainActivity : AppCompatActivity() {
                 else -> true
             }
         }
+        updateAvatarDrawable(s)
     }
 
     private fun isLiveTextEnabled(): Boolean =

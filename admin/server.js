@@ -44,10 +44,11 @@ app.get('/api/watch', (req, res) => {
   try {
     const out = execFileSync('adb', ['devices'], { timeout: 5000, encoding: 'utf8' });
     const devices = out
-      .split('\n')
-      .filter(l => l.includes('\t'))
+      .split('
+')
+      .filter(l => l.includes('	'))
       .map(l => {
-        const [serial, status] = l.split('\t');
+        const [serial, status] = l.split('	');
         return { serial, status };
       });
     const onlineDevices = devices.filter(d => d.status === 'device');
@@ -172,23 +173,23 @@ function pushPrefsToWatch(settings) {
 app.get('/api/prefs', (req, res) => {
   try {
     const prefs = readPrefsFromWatch();
+    // Add poller state
+    const state = loadState();
+    if (state.antfarm_api_key) prefs.antfarm_api_key = state.antfarm_api_key;
+    if (state.antfarm_rooms) prefs.antfarm_rooms = state.antfarm_rooms;
+    prefs.poller_dry_run = state.poller_dry_run;
+    prefs.poller_kill_switch = state.poller_kill_switch;
+
     res.json({ ok: true, prefs });
   } catch (e) {
     res.json({ ok: false, prefs: {}, error: e.message });
   }
 });
 
-// Push all settings to watch
+// Push all settings to watch and save admin state
 app.post('/api/push/settings', (req, res) => {
   const {
-    anthropic_api_key,
-    tavily_api_key,
-    brave_api_key,
-    model,
-    avatar_type,
-    system_prompt,
-    max_tokens,
-    rag_mode
+    anthropic_api_key, tavily_api_key, brave_api_key, antfarm_api_key, antfarm_rooms, poller_dry_run, poller_kill_switch, model, avatar_type, system_prompt, max_tokens, rag_mode
   } = req.body;
 
   // Validate API key
@@ -225,6 +226,22 @@ app.post('/api/push/settings', (req, res) => {
     if (rag_mode) updates.rag_mode = rag_mode;
 
     const settings = { ...current, ...updates };
+    // Poller settings (Server-side)
+    const state = loadState();
+    if (antfarm_api_key) state.antfarm_api_key = antfarm_api_key;
+    if (antfarm_rooms) state.antfarm_rooms = antfarm_rooms;
+    state.poller_dry_run = !!poller_dry_run;
+    state.poller_kill_switch = !!poller_kill_switch;
+    saveState(state);
+
+
+    // Poller settings (Server-side)
+    const state = loadState();
+    if (antfarm_api_key) state.antfarm_api_key = antfarm_api_key;
+    if (antfarm_rooms) state.antfarm_rooms = antfarm_rooms;
+    state.poller_dry_run = !!poller_dry_run;
+    state.poller_kill_switch = !!poller_kill_switch;
+    saveState(state);
 
     pushPrefsToWatch(settings);
     res.json({ ok: true, message: 'Settings pushed — restart ClawWatch on the watch' });

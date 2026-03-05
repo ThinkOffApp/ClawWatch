@@ -94,6 +94,13 @@
         android:padding="8dp"
         android:visibility="gone">
 
+        <ImageView
+            android:id="@+id/avatarView"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_marginBottom="4dp"
+            android:scaleType="fitCenter" />
+
         <TextView
             android:id="@+id/statusText"
             android:layout_width="140dp"
@@ -126,6 +133,12 @@
                 android:layout_height="120dp"
                 android:layout_marginBottom="10dp">
 
+                <ImageView
+                    android:id="@+id/avatarView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter" />
                 <TextView
                     android:id="@+id/avatarFace"
                     android:layout_width="match_parent"

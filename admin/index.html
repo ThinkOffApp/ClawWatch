@@ -1,128 +1,364 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ClawWatch Admin</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #0a0a0f;
-    color: #e5e7eb;
-    min-height: 100vh;
-    padding: 2rem;
-  }
-  header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
-  header h1 { font-size: 1.5rem; font-weight: 700; color: #fff; }
-  header h1 span { color: #d4a5e9; }
-  .watch-badge {
-    display: flex; align-items: center; gap: 0.5rem;
-    padding: 0.35rem 0.8rem; border-radius: 999px;
-    font-size: 0.8rem; font-weight: 600;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04); margin-left: auto;
-  }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; }
-  .dot.connected { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 960px; }
-  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
-  .card {
-    background: rgba(20, 20, 35, 0.8);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 16px; padding: 1.5rem;
-  }
-  .card h2 {
-    font-size: 0.75rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    color: #6b7280; margin-bottom: 1rem;
-  }
-  label { display: block; font-size: 0.8rem; color: #9ca3af; margin-bottom: 0.3rem; margin-top: 0.75rem; }
-  label:first-of-type { margin-top: 0; }
-  input, select, textarea {
-    width: 100%; background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-    color: #fff; font-size: 0.9rem; padding: 0.6rem 0.75rem;
-    outline: none; transition: border-color 0.2s; font-family: inherit;
-  }
-  input:focus, select:focus, textarea:focus { border-color: #d4a5e9; }
-  select option { background: #1a1a2e; }
-  textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
-  .token-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
-  .token-row input { flex: 1; }
-  .token-val { font-size: 1rem; font-weight: 700; color: #d4a5e9; min-width: 36px; text-align: right; }
-  input[type=range] { padding: 0; cursor: pointer; accent-color: #d4a5e9; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.65rem 1.25rem; border-radius: 10px; border: none;
-    font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
-  }
-  .btn-primary { background: #d4a5e9; color: #0a0a0f; width: 100%; justify-content: center; margin-top: 1rem; }
-  .btn-primary:hover { background: #e0baf0; }
-  .btn-secondary { background: rgba(255,255,255,0.06); color: #e5e7eb; border: 1px solid rgba(255,255,255,0.1); width: 100%; justify-content: center; margin-top: 0.5rem; }
-  .btn-secondary:hover { background: rgba(255,255,255,0.1); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .full { grid-column: 1 / -1; }
-  .rag-pills { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
-  .rag-pill {
-    padding: 0.35rem 0.9rem; border-radius: 999px; cursor: pointer;
-    font-size: 0.82rem; font-weight: 600;
-    border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05);
-    color: #9ca3af; transition: all 0.2s;
-  }
-  .rag-pill.active { background: #d4a5e9; color: #0a0a0f; border-color: #d4a5e9; }
-  .rag-description { font-size: 0.78rem; color: #6b7280; margin-top: 0.5rem; line-height: 1.5; }
-  .toast {
-    position: fixed; bottom: 1.5rem; right: 1.5rem;
-    padding: 0.75rem 1.25rem; border-radius: 10px;
-    font-size: 0.9rem; font-weight: 500;
-    opacity: 0; transform: translateY(8px); transition: all 0.3s;
-    pointer-events: none; max-width: 320px;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.ok  { background: #14532d; border: 1px solid #4ade80; color: #4ade80; }
-  .toast.err { background: #450a0a; border: 1px solid #f87171; color: #f87171; }
-  .deploy-note { font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem; text-align: center; }
-  .section-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 0.75rem 0; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClawWatch Admin</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0f;
+      color: #e5e7eb;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    header h1 span {
+      color: #d4a5e9;
+    }
+
+    .watch-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      margin-left: auto;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6b7280;
+    }
+
+    .dot.connected {
+      background: #4ade80;
+      box-shadow: 0 0 6px #4ade80;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      max-width: 960px;
+    }
+
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: rgba(20, 20, 35, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-bottom: 0.3rem;
+      margin-top: 0.75rem;
+    }
+
+    label:first-of-type {
+      margin-top: 0;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.9rem;
+      padding: 0.6rem 0.75rem;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #d4a5e9;
+    }
+
+    select option {
+      background: #1a1a2e;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+      line-height: 1.5;
+    }
+
+    .token-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .token-row input {
+      flex: 1;
+    }
+
+    .token-val {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #d4a5e9;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    input[type=range] {
+      padding: 0;
+      cursor: pointer;
+      accent-color: #d4a5e9;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      border-radius: 10px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #d4a5e9;
+      color: #0a0a0f;
+      width: 100%;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    .btn-primary:hover {
+      background: #e0baf0;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: #e5e7eb;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      width: 100%;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .rag-pills {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .rag-pill {
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+      color: #9ca3af;
+      transition: all 0.2s;
+    }
+
+    .rag-pill.active {
+      background: #d4a5e9;
+      color: #0a0a0f;
+      border-color: #d4a5e9;
+    }
+
+    .rag-description {
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin-top: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.3s;
+      pointer-events: none;
+      max-width: 320px;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast.ok {
+      background: #14532d;
+      border: 1px solid #4ade80;
+      color: #4ade80;
+    }
+
+    .toast.err {
+      background: #450a0a;
+      border: 1px solid #f87171;
+      color: #f87171;
+    }
+
+    .deploy-note {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      margin: 0.75rem 0;
+    }
+  </style>
 </head>
+
 <body>
 
-<header>
-  <h1>Claw<span>Watch</span> Admin</h1>
-  <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto">
-    <input id="watchTarget" type="text" placeholder="192.168.x.x:PORT"
-      style="width:180px;padding:0.35rem 0.6rem;font-size:0.8rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;outline:none"
-      onkeydown="if(event.key==='Enter')connectWatch()" />
-    <button onclick="connectWatch()" style="padding:0.35rem 0.75rem;background:#d4a5e9;color:#000;border:none;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">Connect</button>
-    <div class="watch-badge">
-      <div class="dot" id="dot"></div>
-      <span id="watchStatus">Checking…</span>
+  <header>
+    <h1>Claw<span>Watch</span> Admin</h1>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto">
+      <input id="watchTarget" type="text" placeholder="192.168.x.x:PORT"
+        style="width:180px;padding:0.35rem 0.6rem;font-size:0.8rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;outline:none"
+        onkeydown="if(event.key==='Enter')connectWatch()" />
+      <button onclick="connectWatch()"
+        style="padding:0.35rem 0.75rem;background:#d4a5e9;color:#000;border:none;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">Connect</button>
+      <div class="watch-badge">
+        <div class="dot" id="dot"></div>
+        <span id="watchStatus">Checking…</span>
+      </div>
     </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- API Keys -->
+    <div class="card">
+      <h2>API Keys</h2>
+      <label>Anthropic API Key</label>
+      <input id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off" />
+
+      <hr class="section-divider">
+
+      <label>Tavily API Key <span style="color:#6b7280;font-weight:400">(recommended for RAG)</span></label>
+      <input id="tavilyKey" type="password" placeholder="tvly-… (free at tavily.com)" autocomplete="off" />
+      <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
+        Free: 1,000 searches/month. Built for AI RAG. Handles weather, news, finance, anything.
+      </p>
+
+      <label>Brave Search API Key <span style="color:#6b7280;font-weight:400">(alternative)</span></label>
+      <input id="braveKey" type="password" placeholder="BSA… (free tier at brave.com/search/api)" autocomplete="off" />
+      <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
+        Free: 2,000 searches/month.
+      </p>
+    </div>
+    <input type="hidden" id="maxTokens" value="150" />
+
+    <label>Avatar</label>
+    <select id="avatarType">
+      <option value="lobster">lobster (default)</option>
+      <option value="ant">ant</option>
+      <option value="robot">robot</option>
+      <option value="boy">boy</option>
+      <option value="girl">girl</option>
+    </select>
   </div>
-</header>
 
-<div class="grid">
-
-  <!-- API Keys -->
+  <!-- Ant Farm Setup -->
   <div class="card">
-    <h2>API Keys</h2>
-    <label>Anthropic API Key</label>
-    <input id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off" />
+    <h2>Ant Farm Access Setup</h2>
+    <label>Ant Farm API Key <span style="color:#6b7280;font-weight:400">(for the poller)</span></label>
+    <input id="antFarmKey" type="password" placeholder="xfb_..." autocomplete="off" />
+    <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
+      Get this from your Ant Farm developer settings.
+    </p>
 
     <hr class="section-divider">
 
-    <label>Tavily API Key <span style="color:#6b7280;font-weight:400">(recommended for RAG)</span></label>
-    <input id="tavilyKey" type="password" placeholder="tvly-… (free at tavily.com)" autocomplete="off" />
-    <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
-      Free: 1,000 searches/month. Built for AI RAG. Handles weather, news, finance, anything.
-    </p>
+    <label>Target Rooms <span style="color:#6b7280;font-weight:400">(comma separated)</span></label>
+    <input id="antFarmRooms" type="text" placeholder="thinkoff-development,feature-admin-planning" autocomplete="off" />
 
-    <label>Brave Search API Key <span style="color:#6b7280;font-weight:400">(alternative)</span></label>
-    <input id="braveKey" type="password" placeholder="BSA… (free tier at brave.com/search/api)" autocomplete="off" />
-    <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
-      Free: 2,000 searches/month.
-    </p>
+    <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1rem;cursor:pointer">
+      <input type="checkbox" id="pollerDryRun" style="width:auto">
+      <span>Dry-run mode (log intended replies without posting)</span>
+    </label>
+
+    <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer">
+      <input type="checkbox" id="pollerKillSwitch" style="width:auto">
+      <span>Kill circuit (stop poller entirely)</span>
+    </label>
   </div>
 
   <!-- Model -->
@@ -152,15 +388,6 @@
       <span class="token-val" id="maxTokensVal">150</span>
     </div>
     <input type="hidden" id="maxTokens" value="150" />
-
-    <label>Avatar</label>
-    <select id="avatarType">
-      <option value="lobster">lobster (default)</option>
-      <option value="ant">ant</option>
-      <option value="robot">robot</option>
-      <option value="boy">boy</option>
-      <option value="girl">girl</option>
-    </select>
   </div>
 
   <!-- RAG -->
@@ -173,7 +400,8 @@
       <div class="rag-pill" id="rag-opus_tool" onclick="setRag('opus_tool')">Opus Tool Use</div>
     </div>
     <p class="rag-description" id="ragDesc">
-      <b>Auto-search:</b> Detects queries needing live info (news, weather, prices, scores) and pre-searches before sending to Claude. Uses Brave Search (if key set) or DuckDuckGo (free fallback).
+      <b>Auto-search:</b> Detects queries needing live info (news, weather, prices, scores) and pre-searches before
+      sending to Claude. Uses Brave Search (if key set) or DuckDuckGo (free fallback).
     </p>
     <input type="hidden" id="ragMode" value="kotlin" />
   </div>
@@ -181,8 +409,22 @@
   <!-- System Prompt -->
   <div class="card">
     <h2>System Prompt</h2>
-    <textarea id="systemPrompt">You are a voice assistant on a Samsung smartwatch. Rules: respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. Plain spoken language only. Be direct and precise. Never say 'Certainly!' or 'Great question!'</textarea>
+    <textarea
+      id="systemPrompt">You are a voice assistant on a Samsung smartwatch. Rules: respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. Plain spoken language only. Be direct and precise. Never say 'Certainly!' or 'Great question!'</textarea>
   </div>
+
+  <!-- Actions -->
+  <div class="card full">
+    <h2>Actions</h2>
+    <button class="btn btn-primary" onclick="pushAll()">⬆ Push all settings to watch</button>
+    <button class="btn btn-secondary" onclick="loadFromWatch()">⬇ Load current settings from watch</button>
+    <button class="btn btn-secondary" onclick="deploy()">🔨 Rebuild &amp; reinstall APK</button>
+    <p class="deploy-note">Watch must be connected via ADB. Rebuild takes ~30s.</p>
+  </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
 
   <!-- Actions -->
   <div class="card full">
@@ -194,120 +436,150 @@
     <p class="deploy-note">Watch must be connected via ADB. Rebuild takes ~30s.</p>
   </div>
 
-</div>
+  <script>
+    let ragMode = 'kotlin';
+    const RAG_DESCS = {
+      'off': 'No web search. Claude answers from its training data only.',
+      'kotlin': '<b>Auto-search:</b> Detects queries needing live info (news, weather, prices, scores) and pre-searches before sending to Claude. Uses Brave Search (if key set) or DuckDuckGo (free fallback).',
+      'opus_tool': '<b>Opus Tool Use:</b> Claude decides when to search by calling a web_search tool. More accurate intent detection but uses extra tokens for the tool call round-trip.'
+    };
 
-<div class="toast" id="toast"></div>
+    function setRag(mode) {
+      ragMode = mode;
+      document.getElementById('ragMode').value = mode;
+      document.querySelectorAll('.rag-pill').forEach(p => p.classList.remove('active'));
+      document.getElementById('rag-' + mode).classList.add('active');
+      document.getElementById('ragDesc').innerHTML = RAG_DESCS[mode] || '';
+    }
 
-<script>
-let ragMode = 'kotlin';
-const RAG_DESCS = {
-  'off': 'No web search. Claude answers from its training data only.',
-  'kotlin': '<b>Auto-search:</b> Detects queries needing live info (news, weather, prices, scores) and pre-searches before sending to Claude. Uses Brave Search (if key set) or DuckDuckGo (free fallback).',
-  'opus_tool': '<b>Opus Tool Use:</b> Claude decides when to search by calling a web_search tool. More accurate intent detection but uses extra tokens for the tool call round-trip.'
-};
+    async function pushAll() {
+      const settings = {
+        anthropic_api_key: document.getElementById('apiKey').value.trim() || undefined,
+        tavily_api_key: document.getElementById('tavilyKey').value.trim() || undefined,
+        brave_api_key: document.getElementById('braveKey').value.trim() || undefined,
+        antfarm_api_key: document.getElementById('antFarmKey').value.trim() || undefined,
+        antfarm_rooms: document.getElementById('antFarmRooms').value.trim() || undefined,
+        poller_dry_run: document.getElementById('pollerDryRun').checked,
+        poller_kill_switch: document.getElementById('pollerKillSwitch').checked,
+        model: document.getElementById('model').value,
+        system_prompt: document.getElementById('systemPrompt').value,
+        max_tokens: parseInt(document.getElementById('maxTokens').value),
+        rag_mode: ragMode
+      };
+      // Remove undefined
+      Object.keys(settings).forEach(k => settings[k] === undefined && delete settings[k]);
 
-function setRag(mode) {
-  ragMode = mode;
-  document.getElementById('ragMode').value = mode;
-  document.querySelectorAll('.rag-pill').forEach(p => p.classList.remove('active'));
-  document.getElementById('rag-' + mode).classList.add('active');
-  document.getElementById('ragDesc').innerHTML = RAG_DESCS[mode] || '';
-}
+      const r = await fetch('/api/push/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      }).then(r => r.json());
+      toast(r.ok ? r.message : r.error, r.ok ? 'ok' : 'err');
+    }
 
-async function pushAll() {
-  const settings = {
-    anthropic_api_key: document.getElementById('apiKey').value.trim() || undefined,
-    tavily_api_key: document.getElementById('tavilyKey').value.trim() || undefined,
-    brave_api_key: document.getElementById('braveKey').value.trim() || undefined,
-    model: document.getElementById('model').value,
-    avatar_type: document.getElementById('avatarType').value,
-    system_prompt: document.getElementById('systemPrompt').value,
-    max_tokens: parseInt(document.getElementById('maxTokens').value),
-    rag_mode: ragMode
-  };
-  // Remove undefined
-  Object.keys(settings).forEach(k => settings[k] === undefined && delete settings[k]);
+    async function loadFromWatch() {
+      const r = await fetch('/api/prefs').then(r => r.json());
+      if (!r.ok) { toast('Could not read watch prefs', 'err'); return; }
+      const p = r.prefs;
+      if (p.model) document.getElementById('model').value = p.model;
+      if (p.system_prompt) document.getElementById('systemPrompt').value = p.system_prompt;
+      if (p.max_tokens) {
+        document.getElementById('maxTokens').value = p.max_tokens;
+        document.getElementById('maxTokensRange').value = p.max_tokens;
+        document.getElementById('maxTokensVal').textContent = p.max_tokens;
+      }
+      if (p.rag_mode) setRag(p.rag_mode);
+      if (p.antfarm_rooms) document.getElementById('antFarmRooms').value = p.antfarm_rooms;
+      if (p.antfarm_api_key) document.getElementById('antFarmKey').value = p.antfarm_api_key;
+      if (p.poller_anthropic_key) document.getElementById('pollerAnthropicKey').value = p.poller_anthropic_key;
+      document.getElementById('pollerDryRun').checked = !!p.poller_dry_run;
+      document.getElementById('pollerKillSwitch').checked = !!p.poller_kill_switch;
+      toast('Loaded from watch & server', 'ok');
+    }
 
-  const r = await fetch('/api/push/settings', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(settings)
-  }).then(r => r.json());
-  toast(r.ok ? r.message : r.error, r.ok ? 'ok' : 'err');
-}
+    async function pushAll() {
+      const settings = {
+        anthropic_api_key: document.getElementById('apiKey').value.trim() || undefined,
+        tavily_api_key: document.getElementById('tavilyKey').value.trim() || undefined,
+        brave_api_key: document.getElementById('braveKey').value.trim() || undefined,
+        antfarm_api_key: document.getElementById('antFarmKey').value.trim() || undefined,
+        antfarm_rooms: document.getElementById('antFarmRooms').value.trim() || undefined,
+        poller_dry_run: document.getElementById('pollerDryRun').checked,
+        poller_kill_switch: document.getElementById('pollerKillSwitch').checked,
+        model: document.getElementById('model').value,
+        avatar_type: document.getElementById('avatarType').value,
+        system_prompt: document.getElementById('systemPrompt').value,
+        max_tokens: parseInt(document.getElementById('maxTokens').value),
+        rag_mode: ragMode
+      };
+      // Remove undefined
+      Object.keys(settings).forEach(k => settings[k] === undefined && delete settings[k]);
 
-async function loadFromWatch() {
-  const r = await fetch('/api/prefs').then(r => r.json());
-  if (!r.ok) { toast('Could not read watch prefs', 'err'); return; }
-  const p = r.prefs;
-  if (p.model) document.getElementById('model').value = p.model;
-  if (p.avatar_type) document.getElementById('avatarType').value = p.avatar_type;
-  if (p.system_prompt) document.getElementById('systemPrompt').value = p.system_prompt;
-  if (p.max_tokens) {
-    document.getElementById('maxTokens').value = p.max_tokens;
-    document.getElementById('maxTokensRange').value = p.max_tokens;
-    document.getElementById('maxTokensVal').textContent = p.max_tokens;
-  }
-  if (p.rag_mode) setRag(p.rag_mode);
-  toast('Loaded from watch', 'ok');
-}
+      const r = await fetch('/api/push/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      }).then(r => r.json());
+      toast(r.ok ? r.message : r.error, r.ok ? 'ok' : 'err');
+    }
 
-async function deploy() {
-  toast('Build started — check terminal', 'ok');
-  fetch('/api/deploy', { method: 'POST' });
-}
+    async function deploy() {
+      toast('Build started — check terminal', 'ok');
+      fetch('/api/deploy', { method: 'POST' });
+    }
 
-async function captureLogs() {
-  const r = await fetch('/api/logs?lines=1200').then(r => r.json()).catch(() => ({ ok: false, error: 'Failed to fetch logs' }));
-  if (!r.ok || !r.logs) {
-    toast(r.error || 'Could not capture logs', 'err');
-    return;
-  }
+    function toast(msg, type) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast ${type} show`;
+      setTimeout(() => el.classList.remove('show'), 3500);
+    }
 
-  const now = new Date();
-  const stamp = now.toISOString().replace(/[:.]/g, '-');
-  const blob = new Blob([r.logs], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `clawwatch-log-${stamp}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  toast(`Downloaded ${r.selected_lines || 0} log lines`, 'ok');
-}
+    async function loadFromWatch() {
+      const r = await fetch('/api/prefs').then(r => r.json());
+      if (!r.ok) { toast('Could not read watch prefs', 'err'); return; }
+      const p = r.prefs;
+      if (p.model) document.getElementById('model').value = p.model;
+      if (p.avatar_type) document.getElementById('avatarType').value = p.avatar_type;
+      if (p.system_prompt) document.getElementById('systemPrompt').value = p.system_prompt;
+      if (p.max_tokens) {
+        document.getElementById('maxTokens').value = p.max_tokens;
+        document.getElementById('maxTokensRange').value = p.max_tokens;
+        document.getElementById('maxTokensVal').textContent = p.max_tokens;
+      }
+      if (p.rag_mode) setRag(p.rag_mode);
+      if (p.antfarm_rooms) document.getElementById('antFarmRooms').value = p.antfarm_rooms;
+      if (p.antfarm_api_key) document.getElementById('antFarmKey').value = p.antfarm_api_key;
+      if (p.poller_anthropic_key) document.getElementById('pollerAnthropicKey').value = p.poller_anthropic_key;
+      document.getElementById('pollerDryRun').checked = !!p.poller_dry_run;
+      document.getElementById('pollerKillSwitch').checked = !!p.poller_kill_switch;
+      toast('Loaded from watch', 'ok');
+    }
 
-function toast(msg, type) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = `toast ${type} show`;
-  setTimeout(() => el.classList.remove('show'), 3500);
-}
+    // Watch status poll
+    async function checkWatch() {
+      const w = await fetch('/api/watch').then(r => r.json()).catch(() => ({ connected: false }));
+      document.getElementById('dot').className = 'dot' + (w.connected ? ' connected' : '');
+      document.getElementById('watchStatus').textContent = w.connected
+        ? (w.device || 'Connected') : 'Not connected';
+      if (w.target && !document.getElementById('watchTarget').value)
+        document.getElementById('watchTarget').value = w.target;
+    }
 
-// Watch status poll
-async function checkWatch() {
-  const w = await fetch('/api/watch').then(r => r.json()).catch(() => ({ connected: false }));
-  document.getElementById('dot').className = 'dot' + (w.connected ? ' connected' : '');
-  document.getElementById('watchStatus').textContent = w.connected
-    ? (w.device || 'Connected') : 'Not connected';
-  if (w.target && !document.getElementById('watchTarget').value)
-    document.getElementById('watchTarget').value = w.target;
-}
+    async function connectWatch() {
+      const target = document.getElementById('watchTarget').value.trim();
+      if (!target) return;
+      const r = await fetch('/api/watch/connect', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target })
+      }).then(r => r.json());
+      toast(r.ok ? r.message : r.error, r.ok ? 'ok' : 'err');
+      checkWatch();
+    }
 
-async function connectWatch() {
-  const target = document.getElementById('watchTarget').value.trim();
-  if (!target) return;
-  const r = await fetch('/api/watch/connect', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ target })
-  }).then(r => r.json());
-  toast(r.ok ? r.message : r.error, r.ok ? 'ok' : 'err');
-  checkWatch();
-}
-
-checkWatch();
-setInterval(checkWatch, 5000);
-</script>
+    checkWatch();
+    setInterval(checkWatch, 5000);
+  </script>
 </body>
+
 </html>
