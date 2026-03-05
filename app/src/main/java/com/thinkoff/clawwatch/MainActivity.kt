@@ -386,7 +386,7 @@ class MainActivity : AppCompatActivity() {
                 else -> true
             }
         }
-        updateAvatarDrawable(s)
+        updateAvatarDrawable(state)
     }
 
     private fun isLiveTextEnabled(): Boolean =
