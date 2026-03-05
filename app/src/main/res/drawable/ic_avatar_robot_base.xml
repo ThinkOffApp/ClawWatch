@@ -1,10 +1,6 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp" android:height="200dp"
     android:viewportWidth="200" android:viewportHeight="200">
-    <group android:name="status_ring" android:pivotX="100" android:pivotY="100">
-        <path android:fillColor="#00000000" android:strokeColor="#CDDC39" android:strokeWidth="4"
-            android:pathData="M 100 20 A 80 80 0 1 1 99.99 20" />
-    </group>
     <group android:name="head_group" android:pivotX="100" android:pivotY="100">
         <path android:fillColor="#C2185B" android:pathData="M55,60 h90 v70 q0,20 -45,20 q-45,0 -45,-20 Z" />
         <path android:fillColor="#880E4F" android:pathData="M60,65 h80 v60 q0,15 -40,15 q-40,0 -40,-15 Z" />
