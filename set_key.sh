@@ -26,10 +26,10 @@ cat > "$TMP" << XMLEOF
 XMLEOF
 
 echo "Pushing API key to watch..."
-adb push "$TMP" /sdcard/clawwatch_tmp.xml
+adb push "$TMP" /data/local/tmp/clawwatch_tmp.xml
 adb shell "run-as $PKG sh -c 'mkdir -p /data/data/$PKG/shared_prefs'"
-adb shell "run-as $PKG sh -c 'cp /sdcard/clawwatch_tmp.xml /data/data/$PKG/shared_prefs/clawwatch_prefs.xml'"
-adb shell "rm /sdcard/clawwatch_tmp.xml"
+adb shell "run-as $PKG sh -c 'cp /data/local/tmp/clawwatch_tmp.xml /data/data/$PKG/shared_prefs/clawwatch_prefs.xml'"
+adb shell "rm /data/local/tmp/clawwatch_tmp.xml"
 rm "$TMP"
 
 echo "Done. Restart ClawWatch on the watch."
