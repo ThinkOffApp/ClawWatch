@@ -94,13 +94,6 @@
         android:padding="8dp"
         android:visibility="gone">
 
-        <ImageView
-            android:id="@+id/avatarView"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:layout_marginBottom="4dp"
-            android:scaleType="fitCenter" />
-
         <TextView
             android:id="@+id/statusText"
             android:layout_width="140dp"
