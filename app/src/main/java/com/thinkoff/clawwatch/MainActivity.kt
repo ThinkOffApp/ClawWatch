@@ -460,16 +460,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateAvatar(s: State) {
-        val type = currentAvatarType()
         val aState = avatarStateFor(s)
-        val face = avatarExpressions[type]?.get(aState) ?: "🐜"
-        binding.avatarFace.text = face
-
-        val lowBattery = isLowBattery()
-        binding.avatarFace.setTextColor(if (lowBattery) LOW_BATTERY_COLOR else ACCENT_COLOR)
-        binding.avatarFace.alpha = if (lowBattery) 0.6f else 1.0f
-
-        if (lowBattery) {
+        
+        if (isLowBattery()) {
             stopAvatarAnimation()
             return
         }
@@ -484,9 +477,8 @@ class MainActivity : AppCompatActivity() {
                     duration = 850L
                     repeatCount = ValueAnimator.INFINITE
                     addUpdateListener {
-                        val v = it.animatedValue as Float
-                        binding.avatarFace.scaleX = v
-                        binding.avatarFace.scaleY = v
+                        // binding.avatarFace.scaleX = v
+                        // binding.avatarFace.scaleY = v
                     }
                     start()
                 }
@@ -496,8 +488,7 @@ class MainActivity : AppCompatActivity() {
                     duration = 1200L
                     repeatCount = ValueAnimator.INFINITE
                     addUpdateListener {
-                        val p = it.animatedFraction
-                        binding.avatarFace.rotation = -6f + 12f * p
+                        // binding.avatarFace.rotation = -6f + 12f * p
                     }
                     start()
                 }
@@ -507,9 +498,8 @@ class MainActivity : AppCompatActivity() {
                     duration = 480L
                     repeatCount = ValueAnimator.INFINITE
                     addUpdateListener {
-                        val v = it.animatedValue as Float
-                        binding.avatarFace.scaleX = v
-                        binding.avatarFace.scaleY = v
+                        // binding.avatarFace.scaleX = v
+                        // binding.avatarFace.scaleY = v
                     }
                     start()
                 }
@@ -529,10 +519,6 @@ class MainActivity : AppCompatActivity() {
     private fun stopAvatarAnimation() {
         avatarAnimator?.cancel()
         avatarAnimator = null
-        binding.avatarFace.scaleX = 1.0f
-        binding.avatarFace.scaleY = 1.0f
-        binding.avatarFace.rotation = 0f
-        if (!isLowBattery()) binding.avatarFace.alpha = 1.0f
     }
 
     private fun startAutoListenWindow(token: Int) {
@@ -602,7 +588,6 @@ class MainActivity : AppCompatActivity() {
             binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
             applyLiveTextVisibility()
             updateAvatar(s)
-            updateActionIndicator(s)
             binding.fab.contentDescription = when (s) {
                 State.IDLE      -> "Tap to talk"
                 State.LISTENING -> "Tap to stop"
@@ -623,17 +608,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateActionIndicator(s: State) {
-        binding.actionIndicator.text = when (s) {
-            State.IDLE -> ""
-            State.LISTENING -> "👂"
-            State.THINKING, State.SEARCHING -> "☁️"
-            State.SPEAKING -> "⋯"
-            State.ERROR -> "⚠️"
-            State.SETUP -> ""
-        }
-        binding.actionIndicator.visibility = if (s == State.SETUP || s == State.IDLE) View.INVISIBLE else View.VISIBLE
-    }
 
     private fun applyConversationScreenPolicy(state: State) {
         val keepOn = when (state) {
