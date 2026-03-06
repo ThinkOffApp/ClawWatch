@@ -14,6 +14,10 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.GestureDetector
+import android.widget.TextView
+import android.graphics.drawable.AnimatedVectorDrawable
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -60,6 +64,8 @@ class MainActivity : AppCompatActivity() {
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private lateinit var gestureDetector: GestureDetector
     private var currentAvatarIndex = 0
+    private var useEmojiFallback = false
+    private var fallbackTextView: TextView? = null
 
     private var state = State.SETUP
     private var queryJob: Job? = null
@@ -159,25 +165,104 @@ class MainActivity : AppCompatActivity() {
         return super.dispatchTouchEvent(ev)
     }
 
+    private fun ensureFallbackCreated() {
+        if (fallbackTextView == null && useEmojiFallback) {
+            val tv = TextView(this).apply {
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    gravity = android.view.Gravity.CENTER
+                }
+                textSize = 72f
+                visibility = View.VISIBLE
+            }
+            binding.avatarContainer.addView(tv)
+            fallbackTextView = tv
+        }
+    }
+
     private fun updateAvatarDrawable(s: State) {
         if (s == State.SETUP) return
 
-        val charName = AVATARS[currentAvatarIndex]
-        val stateName = when(s) {
-            State.IDLE -> "idle"
-            State.LISTENING -> "listening"
-            State.THINKING -> "thinking"
-            State.SPEAKING -> "speaking"
-            else -> "idle"
+        val typeStr = prefs.getString(PREF_AVATAR_TYPE, "lobster")
+        val avatarType = try {
+            AvatarType.valueOf(typeStr?.uppercase() ?: "LOBSTER")
+        } catch (e: Exception) { AvatarType.LOBSTER }
+
+        val avatarState = when(s) {
+            State.IDLE -> AvatarState.IDLE
+            State.LISTENING -> AvatarState.LISTENING
+            State.THINKING -> AvatarState.THINKING
+            State.SEARCHING -> AvatarState.SEARCHING
+            State.SPEAKING -> AvatarState.SPEAKING
+            State.ERROR -> AvatarState.ERROR
+            else -> AvatarState.IDLE
         }
 
-        val resName = "avd_avatar_${charName}_${stateName}"
-        val resId = resources.getIdentifier(resName, "drawable", packageName)
+        if (useEmojiFallback) {
+            ensureFallbackCreated()
+            binding.avatarView.visibility = View.GONE
+            fallbackTextView?.visibility = View.VISIBLE
+            val emoji = avatarExpressions[avatarType]?.get(avatarState) ?: "❓"
+            fallbackTextView?.text = emoji
+            
+            // Text emoji simple scaling animation
+            avatarAnimator?.cancel()
+            if (s in listOf(State.LISTENING, State.THINKING, State.SEARCHING)) {
+                fallbackTextView?.let { tv ->
+                    avatarAnimator = ValueAnimator.ofFloat(1f, 1.05f).apply {
+                        duration = 800
+                        repeatCount = ValueAnimator.INFINITE
+                        repeatMode = ValueAnimator.REVERSE
+                        addUpdateListener { animator ->
+                            val scale = animator.animatedValue as Float
+                            tv.scaleX = scale
+                            tv.scaleY = scale
+                        }
+                        start()
+                    }
+                }
+            } else {
+                fallbackTextView?.scaleX = 1f
+                fallbackTextView?.scaleY = 1f
+            }
+        } else {
+            fallbackTextView?.visibility = View.GONE
+            binding.avatarView.visibility = View.VISIBLE
+            
+            val charName = avatarType.name.lowercase()
+            val stateName = when(s) {
+                State.IDLE -> "idle"
+                State.LISTENING -> "listening"
+                State.THINKING -> "thinking"
+                State.SEARCHING -> "thinking" // fallback to thinking for now
+                State.SPEAKING -> "speaking"
+                else -> "idle"
+            }
 
-        if (resId != 0) {
-            val drawable = ContextCompat.getDrawable(this, resId) as? android.graphics.drawable.AnimatedVectorDrawable
-            binding.avatarView.setImageDrawable(drawable)
-            drawable?.start()
+            val resName = "avd_avatar_${charName}_${stateName}"
+            var resId = resources.getIdentifier(resName, "drawable", packageName)
+            
+            // Fallback to base static vector if AVD lookup fails
+            if (resId == 0) {
+                resId = resources.getIdentifier("ic_avatar_${charName}_base", "drawable", packageName)
+            }
+
+            if (resId != 0) {
+                // Stop the previous drawable if it was animating
+                (binding.avatarView.drawable as? AnimatedVectorDrawable)?.stop()
+
+                val drawable = ContextCompat.getDrawable(this, resId)
+                binding.avatarView.setImageDrawable(drawable)
+                
+                // Only animate if battery is healthy
+                if (getBatteryPercentage() > 20) {
+                    (drawable as? AnimatedVectorDrawable)?.start()
+                }
+            }
+            
+            // AVD handles its own internal visual feedback.
         }
     }
 
@@ -185,7 +270,7 @@ class MainActivity : AppCompatActivity() {
         setStatus("Starting…")
         clawRunner.ensureInstalled()
         voiceEngine.initTts()
-        updateAvatar(State.IDLE)
+        updateAvatarDrawable(State.IDLE)
 
         if (!clawRunner.hasApiKey()) {
             setState(State.SETUP)
@@ -439,7 +524,7 @@ class MainActivity : AppCompatActivity() {
         val nextIndex = (currentIndex + step + all.size) % all.size
         val next = all[nextIndex]
         prefs.edit().putString(PREF_AVATAR_TYPE, avatarTypeKey(next)).apply()
-        updateAvatar(state)
+        updateAvatarDrawable(state)
     }
 
     private fun avatarStateFor(s: State): AvatarState = when (s) {
@@ -451,74 +536,16 @@ class MainActivity : AppCompatActivity() {
         State.ERROR -> AvatarState.ERROR
     }
 
-    private fun isLowBattery(): Boolean {
-        val intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return false
+    private fun getBatteryPercentage(): Int {
+        val intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return 100
         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-        if (level <= 0 || scale <= 0) return false
-        return (level * 100 / scale) < 20
+        if (level <= 0 || scale <= 0) return 100
+        return (level * 100 / scale)
     }
 
-    private fun updateAvatar(s: State) {
-        val aState = avatarStateFor(s)
-        
-        if (isLowBattery()) {
-            stopAvatarAnimation()
-            return
-        }
-        startAvatarAnimation(aState)
-    }
-
-    private fun startAvatarAnimation(state: AvatarState) {
-        stopAvatarAnimation()
-        when (state) {
-            AvatarState.LISTENING -> {
-                avatarAnimator = ValueAnimator.ofFloat(1.0f, 1.08f, 1.0f).apply {
-                    duration = 850L
-                    repeatCount = ValueAnimator.INFINITE
-                    addUpdateListener {
-                        // binding.avatarFace.scaleX = v
-                        // binding.avatarFace.scaleY = v
-                    }
-                    start()
-                }
-            }
-            AvatarState.THINKING, AvatarState.SEARCHING -> {
-                avatarAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                    duration = 1200L
-                    repeatCount = ValueAnimator.INFINITE
-                    addUpdateListener {
-                        // binding.avatarFace.rotation = -6f + 12f * p
-                    }
-                    start()
-                }
-            }
-            AvatarState.SPEAKING -> {
-                avatarAnimator = ValueAnimator.ofFloat(1.0f, 1.05f, 1.0f).apply {
-                    duration = 480L
-                    repeatCount = ValueAnimator.INFINITE
-                    addUpdateListener {
-                        // binding.avatarFace.scaleX = v
-                        // binding.avatarFace.scaleY = v
-                    }
-                    start()
-                }
-            }
-            AvatarState.ERROR -> {
-                avatarAnimator = ValueAnimator.ofFloat(1.0f, 0.75f, 1.0f).apply {
-                    duration = 700L
-                    repeatCount = ValueAnimator.INFINITE
-                    // addUpdateListener { binding.avatarFace.alpha = it.animatedValue as Float }
-                    start()
-                }
-            }
-            AvatarState.IDLE -> stopAvatarAnimation()
-        }
-    }
-
-    private fun stopAvatarAnimation() {
-        avatarAnimator?.cancel()
-        avatarAnimator = null
+    private fun isLowBattery(): Boolean {
+        return getBatteryPercentage() < 20
     }
 
     private fun startAutoListenWindow(token: Int) {
@@ -587,7 +614,7 @@ class MainActivity : AppCompatActivity() {
             binding.setupPanel.visibility  = if (s == State.SETUP)    View.VISIBLE else View.GONE
             binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
             applyLiveTextVisibility()
-            updateAvatar(s)
+            updateAvatarDrawable(s)
             binding.fab.contentDescription = when (s) {
                 State.IDLE      -> "Tap to talk"
                 State.LISTENING -> "Tap to stop"
@@ -637,7 +664,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cancelAutoListenWindow()
-        stopAvatarAnimation()
+        avatarAnimator?.cancel()
         stopSpeakingPreview()
         queryJob?.cancel()
         voiceEngine.release()
