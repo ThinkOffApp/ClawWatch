@@ -47,7 +47,7 @@ app.get('/api/watch', (req, res) => {
       .split('\n')
       .filter(l => l.includes('\t'))
       .map(l => {
-        const [serial, status] = l.split('	');
+        const [serial, status] = l.split('\t');
         return { serial, status };
       });
     const onlineDevices = devices.filter(d => d.status === 'device');
