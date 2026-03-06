@@ -141,6 +141,32 @@ That's it. Open ClawWatch on the watch.
 
 The watch speaks the response aloud via the built-in speaker.
 
+## V1.1 Improvements (Next — priority order)
+
+### 1. Core STT Quality [PRIORITY]
+- VAD (Voice Activity Detection) tuning to ignore background noise
+- **Dev model switcher**: hot-swap between 2 STT models live on watch
+  - Bundled: vosk-model-small-en-us-0.15 (40MB, current default)
+  - Optional download: vosk-model-en-us-0.22-lgraph (128MB, dynamic graph, ~2x better accuracy)
+
+### 2. Avatar Animations & Fallback [IMPROVE]
+- Replace static emoji-style avatars with real animations (AnimatedVectorDrawable).
+- Implement subtle outer ring pulse for action indicator.
+- **Maintain emoji avatars as a simple text-based fallback system.**
+- Note: Avatar animators, 250ms speaking-preview, and countdown rings will be gated harder for battery preservation (P3).
+
+## Codex Codebase Review Findings (v1.1 Action Items)
+
+**P1 — Fix Now**
+- **Vosk Recognizer memory leak (Pro)**: VoiceEngine allocates new Recognizer every `startListening()` and never closes it → native memory leak across conversations.
+- **Security**: Plaintext API key leakage in ClawRunner + admin temp files + Pro SharedPrefs. Define the secret boundary now and use revocable session credentials instead.
+
+**P2 — Fix Before V1.1 Ships**
+- **opus_tool silently drops conversation memory**: Direct mode uses `buildMessagesWithContext` (appends turns), but `opus_tool` builds requests from only current prompt.
+- **Battery — triple Data Layer sync**: Phone-to-watch sync sends up to 3 separate urgent Data Layer writes per settings update.
+- **Pro security surface**: Manifest declares unused services/permissions (`FOREGROUND_SERVICE_MICROPHONE`, `WAKE_LOCK`, `ClawService`). Remove/defer until architecture is real.
+- **RAG fallback broken**: No real no-key search fallback despite DDG/Open-Meteo helper code existing.
+
 ## Watch UI Spec (V1)
 
 - Layout after splash: `avatar` + one adaptive button below it.
