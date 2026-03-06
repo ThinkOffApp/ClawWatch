@@ -8,11 +8,11 @@ const app = express();
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const CONFIG_PATH    = path.join(__dirname, '../app/src/main/assets/nullclaw.json');
+const CONFIG_PATH = path.join(__dirname, '../app/src/main/assets/nullclaw.json');
 const CONFIG_EXAMPLE_PATH = path.join(__dirname, '../app/src/main/assets/nullclaw.json.example');
-const PKG            = 'com.thinkoff.clawwatch';
-const PREFS_PATH     = `/data/data/${PKG}/shared_prefs/clawwatch_prefs.xml`;
-const STATE_FILE     = path.join(__dirname, '.admin-state.json');
+const PKG = 'com.thinkoff.clawwatch';
+const PREFS_PATH = `/data/data/${PKG}/shared_prefs/clawwatch_prefs.xml`;
+const STATE_FILE = path.join(__dirname, '.admin-state.json');
 
 function loadState() {
   try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; }
@@ -44,9 +44,8 @@ app.get('/api/watch', (req, res) => {
   try {
     const out = execFileSync('adb', ['devices'], { timeout: 5000, encoding: 'utf8' });
     const devices = out
-      .split('
-')
-      .filter(l => l.includes('	'))
+      .split('\n')
+      .filter(l => l.includes('\t'))
       .map(l => {
         const [serial, status] = l.split('	');
         return { serial, status };
@@ -160,13 +159,14 @@ function readPrefsFromWatch() {
 }
 
 function pushPrefsToWatch(settings) {
-  const tmpFile = path.join(os.tmpdir(), 'clawwatch_prefs.xml');
-  fs.writeFileSync(tmpFile, buildPrefsXml(settings), { mode: 0o600 });
-  adb(['push', tmpFile, '/data/local/tmp/clawwatch_prefs.xml']);
+  const xml = buildPrefsXml(settings);
   adb(['shell', 'run-as', PKG, 'mkdir', '-p', `/data/data/${PKG}/shared_prefs`]);
-  adb(['shell', 'run-as', PKG, 'cp', '/data/local/tmp/clawwatch_prefs.xml', PREFS_PATH]);
-  adb(['shell', 'rm', '/data/local/tmp/clawwatch_prefs.xml']);
-  fs.unlinkSync(tmpFile);
+  const prefix = watchTarget ? ['-s', watchTarget] : [];
+  execFileSync('adb', [...prefix, 'shell', 'run-as', PKG, 'sh', '-c', `cat > ${PREFS_PATH}`], {
+    input: xml,
+    timeout: 10000,
+    encoding: 'utf8'
+  });
 }
 
 // Get current prefs from watch
@@ -234,15 +234,6 @@ app.post('/api/push/settings', (req, res) => {
     state.poller_kill_switch = !!poller_kill_switch;
     saveState(state);
 
-
-    // Poller settings (Server-side)
-    const state = loadState();
-    if (antfarm_api_key) state.antfarm_api_key = antfarm_api_key;
-    if (antfarm_rooms) state.antfarm_rooms = antfarm_rooms;
-    state.poller_dry_run = !!poller_dry_run;
-    state.poller_kill_switch = !!poller_kill_switch;
-    saveState(state);
-
     pushPrefsToWatch(settings);
     res.json({ ok: true, message: 'Settings pushed — restart ClawWatch on the watch' });
   } catch (e) {
@@ -269,13 +260,14 @@ app.post('/api/push/key', (req, res) => {
 app.post('/api/push/config', (req, res) => {
   try {
     const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    const tmpFile = path.join(os.tmpdir(), 'nullclaw_tmp.json');
-    fs.writeFileSync(tmpFile, JSON.stringify(config, null, 2));
-    adb(['push', tmpFile, '/data/local/tmp/nullclaw_tmp.json']);
+    const jsonStr = JSON.stringify(config, null, 2);
     adb(['shell', 'run-as', PKG, 'mkdir', '-p', `/data/data/${PKG}/files`]);
-    adb(['shell', 'run-as', PKG, 'cp', '/data/local/tmp/nullclaw_tmp.json', `/data/data/${PKG}/files/nullclaw.json`]);
-    adb(['shell', 'rm', '/data/local/tmp/nullclaw_tmp.json']);
-    fs.unlinkSync(tmpFile);
+    const prefix = watchTarget ? ['-s', watchTarget] : [];
+    execFileSync('adb', [...prefix, 'shell', 'run-as', PKG, 'sh', '-c', `cat > /data/data/${PKG}/files/nullclaw.json`], {
+      input: jsonStr,
+      timeout: 10000,
+      encoding: 'utf8'
+    });
     res.json({ ok: true, message: 'Config pushed — restart ClawWatch on the watch' });
   } catch (e) {
     res.json({ ok: false, error: e.message });

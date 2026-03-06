@@ -106,7 +106,6 @@ class ClawRunner(private val context: Context) {
             }
             context.assets.open(assetName).use { it.copyTo(configFile.outputStream()) }
         }
-        writeNullclawHomeConfig()
         buildCaBundle()
         Log.i(TAG, "ClawRunner ready, home=${homeDir.absolutePath}, rag=${getRagMode()}")
     }
@@ -129,27 +128,6 @@ class ClawRunner(private val context: Context) {
         }
     }
 
-    private fun writeNullclawHomeConfig() {
-        val apiKey = getApiKey() ?: return
-        nullclawConfigFile.parentFile?.mkdirs()
-        nullclawConfigFile.writeText("""
-{
-  "agents": {
-    "defaults": {
-      "model": {
-        "primary": "anthropic/${getModel()}"
-      }
-    }
-  },
-  "providers": {
-    "anthropic": {
-      "api_key": "$apiKey"
-    }
-  }
-}
-""".trimIndent())
-    }
-
     // ── RAG: web search ───────────────────────────────────────────────────────
 
     /** Returns true if the query likely needs current/live information. */
@@ -169,8 +147,17 @@ class ClawRunner(private val context: Context) {
         if (!tavilyKey.isNullOrBlank()) return tavilySearch(query, tavilyKey)
         val braveKey = getBraveKey()
         if (!braveKey.isNullOrBlank()) return braveSearch(query, braveKey)
-        Log.w(TAG, "No search API key set — add Tavily or Brave key in admin panel")
-        return emptyList()
+
+        Log.i(TAG, "No search API key set — falling back to free DDG/Open-Meteo")
+        val lower = query.lowercase()
+        val isWeather = listOf("weather", "temperature", "forecast", "how hot", "how cold", "rain", "snow").any { lower.contains(it) }
+        
+        return if (isWeather) {
+            val wx = wttrSearch(query)
+            if (wx.isNotEmpty()) wx else duckDuckGoHtmlSearch(query)
+        } else {
+            duckDuckGoHtmlSearch(query)
+        }
     }
 
     /** Tavily AI search — designed for RAG, returns clean snippets for any query. */
@@ -456,12 +443,7 @@ class ClawRunner(private val context: Context) {
                     put("max_tokens", getMaxTokens() + 200) // extra tokens for tool call
                     put("system", getSystemPrompt())
                     put("tools", tools)
-                    put("messages", JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("role", "user")
-                            put("content", prompt)
-                        })
-                    })
+                    put("messages", buildMessagesWithContext(prompt))
                 }.toString()
 
                 val firstResponse = callAnthropicRaw(apiKey, firstBody)
@@ -473,6 +455,8 @@ class ClawRunner(private val context: Context) {
                 if (stopReason != "tool_use") {
                     val text = firstResponse.getJSONArray("content")
                         .getJSONObject(0).getString("text").trim()
+                    appendConversation("user", prompt)
+                    appendConversation("assistant", text)
                     return@withContext Result.success(text)
                 }
 
@@ -507,12 +491,7 @@ class ClawRunner(private val context: Context) {
                     put("max_tokens", getMaxTokens())
                     put("system", getSystemPrompt())
                     put("tools", tools)
-                    put("messages", JSONArray().apply {
-                        // Original user message
-                        put(JSONObject().apply {
-                            put("role", "user")
-                            put("content", prompt)
-                        })
+                    val historyWithTool = buildMessagesWithContext(prompt).apply {
                         // Claude's response with tool call
                         put(JSONObject().apply {
                             put("role", "assistant")
@@ -529,7 +508,8 @@ class ClawRunner(private val context: Context) {
                                 })
                             })
                         })
-                    })
+                    }
+                    put("messages", historyWithTool)
                 }.toString()
 
                 val secondResponse = callAnthropicRaw(apiKey, secondBody)
@@ -537,6 +517,9 @@ class ClawRunner(private val context: Context) {
 
                 val finalText = secondResponse.getJSONArray("content")
                     .getJSONObject(0).getString("text").trim()
+
+                appendConversation("user", prompt)
+                appendConversation("assistant", finalText)
 
                 Log.i(TAG, "Opus tool result: '${finalText.take(80)}'")
                 Result.success(finalText)

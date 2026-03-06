@@ -32,26 +32,15 @@ class ConfigSyncService : WearableListenerService() {
             if (event.type != DataEvent.TYPE_CHANGED) continue
             val path = event.dataItem.uri.path ?: continue
             val map  = DataMapItem.fromDataItem(event.dataItem).dataMap
-
             when (path) {
-                PATH_APIKEY -> {
-                    val key = map.getString("key") ?: continue
-                    if (key.isNotBlank()) {
-                        runner.saveApiKey(key)
-                        Log.i(TAG, "API key synced from phone")
-                    }
-                }
-                PATH_BRAVEKEY -> {
-                    val key = map.getString("key") ?: continue
-                    if (key.isNotBlank()) {
-                        runner.saveBraveKey(key)
-                        Log.i(TAG, "Brave key synced from phone")
-                    }
-                }
-                PATH_CONFIG -> {
+                "/clawwatch/sync_all" -> {
                     val payload = map.getString("payload") ?: continue
                     try {
                         val json = JSONObject(payload)
+                        json.optString("api_key").takeIf { it.isNotBlank() }
+                            ?.let { runner.saveApiKey(it) }
+                        json.optString("brave_key").takeIf { it.isNotBlank() }
+                            ?.let { runner.saveBraveKey(it) }
                         json.optString("model").takeIf { it.isNotBlank() }
                             ?.let { runner.saveModel(it) }
                         json.optString("system_prompt").takeIf { it.isNotBlank() }
@@ -60,9 +49,9 @@ class ConfigSyncService : WearableListenerService() {
                             runner.saveMaxTokens(json.getInt("max_tokens"))
                         json.optString("rag_mode").takeIf { it.isNotBlank() }
                             ?.let { runner.saveRagMode(it) }
-                        Log.i(TAG, "Config synced from phone (model=${json.optString("model")}, rag=${json.optString("rag_mode")})")
+                        Log.i(TAG, "All config synced from phone (single burst)")
                     } catch (e: Exception) {
-                        Log.e(TAG, "Config parse error: ${e.message}")
+                        Log.e(TAG, "Config sync burst error: ${e.message}")
                     }
                 }
             }

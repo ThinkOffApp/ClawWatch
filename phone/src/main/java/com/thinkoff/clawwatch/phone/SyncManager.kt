@@ -88,7 +88,7 @@ class SyncManager(private val context: Context) {
         }
     }
 
-    /** Push everything in one shot. */
+    /** Push everything in one shot to save watch battery (single sync). */
     suspend fun pushAll(
         anthropicKey: String,
         braveKey: String?,
@@ -97,8 +97,26 @@ class SyncManager(private val context: Context) {
         maxTokens: Int,
         ragMode: String
     ) = withContext(Dispatchers.IO) {
-        pushApiKey(anthropicKey)
-        if (!braveKey.isNullOrBlank()) pushBraveKey(braveKey)
-        pushConfig(model, systemPrompt, maxTokens, ragMode)
+        try {
+            val json = JSONObject().apply {
+                put("api_key", anthropicKey)
+                if (!braveKey.isNullOrBlank()) put("brave_key", braveKey)
+                put("model", model)
+                put("system_prompt", systemPrompt)
+                put("max_tokens", maxTokens)
+                put("rag_mode", ragMode)
+            }.toString()
+
+            val request = PutDataMapRequest.create("/clawwatch/sync_all").apply {
+                dataMap.putString("payload", json)
+                dataMap.putLong("updated_at", System.currentTimeMillis())
+            }.asPutDataRequest().setUrgent()
+
+            dataClient.putDataItem(request).await()
+            Log.i(TAG, "All config pushed to watch in single burst")
+        } catch (e: Exception) {
+            Log.e(TAG, "pushAll failed: ${e.message}")
+            throw e
+        }
     }
 }
