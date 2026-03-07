@@ -3,16 +3,24 @@
     <objectAnimator
         android:propertyName="scaleY"
         android:valueFrom="1.0"
-        android:valueTo="1.03"
-        android:duration="2000"
+        android:valueTo="1.025"
+        android:duration="2600"
+        android:repeatCount="infinite"
+        android:repeatMode="reverse"
+        android:interpolator="@android:interpolator/accelerate_decelerate" />
+    <objectAnimator
+        android:propertyName="scaleX"
+        android:valueFrom="0.995"
+        android:valueTo="1.01"
+        android:duration="2600"
         android:repeatCount="infinite"
         android:repeatMode="reverse"
         android:interpolator="@android:interpolator/accelerate_decelerate" />
     <objectAnimator
         android:propertyName="translateY"
         android:valueFrom="0.0"
-        android:valueTo="-2.0"
-        android:duration="2000"
+        android:valueTo="-3.0"
+        android:duration="2600"
         android:repeatCount="infinite"
         android:repeatMode="reverse"
         android:interpolator="@android:interpolator/accelerate_decelerate" />

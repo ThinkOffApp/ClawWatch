@@ -31,19 +31,24 @@ class VoiceEngine(private val context: Context) {
         private const val VOSK_MODEL_DIR = "vosk-model-small-en-us"
         private const val SAMPLE_RATE = 16000f
         private const val TTS_UTTERANCE_ID = "claw_response"
+        private const val PREF_TTS_LOCALE = "tts_locale"
+        private const val PREF_TTS_VOICE_NAME = "tts_voice_name"
+        private const val PREF_TTS_ENGINE_PACKAGE = "tts_engine_package"
     }
 
     private var tts: TextToSpeech? = null
     private var speechService: SpeechService? = null
     private var voskModel: Model? = null
     private var recognizer: Recognizer? = null
+    private val prefs by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SecurePrefs.watch(context) }
 
     // ── TTS ──────────────────────────────────────────────
 
     suspend fun initTts() = suspendCancellableCoroutine { cont ->
-        tts = TextToSpeech(context) { status ->
+        val preferredEngine = prefs.getString(PREF_TTS_ENGINE_PACKAGE, null)?.takeIf { it.isNotBlank() }
+        val initListener: (Int) -> Unit = { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.language = Locale.US
+                applyPreferredVoice()
                 tts?.setSpeechRate(1.1f)
                 Log.i(TAG, "TTS ready")
                 cont.resume(true)
@@ -51,6 +56,43 @@ class VoiceEngine(private val context: Context) {
                 Log.e(TAG, "TTS init failed: $status")
                 cont.resume(false)
             }
+        }
+
+        tts = if (preferredEngine != null) {
+            TextToSpeech(context, initListener, preferredEngine)
+        } else {
+            TextToSpeech(context, initListener)
+        }
+    }
+
+    private fun applyPreferredVoice() {
+        val preferredLocaleTag = prefs.getString(PREF_TTS_LOCALE, null)?.takeIf { it.isNotBlank() } ?: "en-US"
+        val preferredVoiceName = prefs.getString(PREF_TTS_VOICE_NAME, null)?.takeIf { it.isNotBlank() }
+        val desiredLocale = Locale.forLanguageTag(preferredLocaleTag)
+        val engine = tts ?: return
+
+        val availableVoices = try {
+            engine.voices.orEmpty()
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not enumerate TTS voices", e)
+            emptySet()
+        }
+
+        val selectedVoice = when {
+            preferredVoiceName != null ->
+                availableVoices.firstOrNull { it.name == preferredVoiceName }
+            else ->
+                availableVoices.firstOrNull {
+                    it.locale == desiredLocale && !it.isNetworkConnectionRequired
+                } ?: availableVoices.firstOrNull { it.locale == desiredLocale }
+        }
+
+        if (selectedVoice != null) {
+            engine.voice = selectedVoice
+            Log.i(TAG, "TTS voice selected: ${selectedVoice.name} (${selectedVoice.locale.toLanguageTag()})")
+        } else {
+            engine.language = desiredLocale
+            Log.i(TAG, "TTS locale selected: ${desiredLocale.toLanguageTag()}")
         }
     }
 

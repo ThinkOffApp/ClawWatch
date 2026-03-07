@@ -123,11 +123,11 @@
 
             <FrameLayout
                 android:id="@+id/avatarContainer"
-                android:layout_width="164dp"
-                android:layout_height="164dp"
-                android:layout_marginBottom="0dp"
+                android:layout_width="176dp"
+                android:layout_height="168dp"
+                android:layout_marginBottom="-6dp"
                 android:background="@drawable/avatar_bg"
-                android:padding="8dp">
+                android:padding="0dp">
 
                 <ImageView
                     android:id="@+id/avatarView"

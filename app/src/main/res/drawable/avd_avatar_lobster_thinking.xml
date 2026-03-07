@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/ic_avatar_lobster_base">
-    <target android:name="status_ring" android:animation="@anim/anim_thinking_spin" />
-    <target android:name="head_group" android:animation="@anim/anim_idle_breathe" />
+    <target android:name="head_group" android:animation="@anim/anim_thinking_float" />
+    <target android:name="antenna_left" android:animation="@anim/anim_antenna_left_sway" />
+    <target android:name="antenna_right" android:animation="@anim/anim_antenna_right_sway" />
+    <target android:name="left_claw" android:animation="@anim/anim_thinking_claw_left" />
+    <target android:name="right_claw" android:animation="@anim/anim_thinking_claw_right" />
 </animated-vector>

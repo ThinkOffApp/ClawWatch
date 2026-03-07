@@ -23,7 +23,10 @@ object SecurePrefs {
         "system_prompt",
         "max_tokens",
         "rag_mode",
-        "avatar_type"
+        "avatar_type",
+        "tts_locale",
+        "tts_voice_name",
+        "tts_engine_package"
     )
 
     @Volatile
