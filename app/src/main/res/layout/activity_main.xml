@@ -119,15 +119,15 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="14dp">
+            android:paddingTop="8dp">
 
             <FrameLayout
                 android:id="@+id/avatarContainer"
-                android:layout_width="154dp"
-                android:layout_height="154dp"
-                android:layout_marginBottom="6dp"
+                android:layout_width="164dp"
+                android:layout_height="164dp"
+                android:layout_marginBottom="0dp"
                 android:background="@drawable/avatar_bg"
-                android:padding="14dp">
+                android:padding="8dp">
 
                 <ImageView
                     android:id="@+id/avatarView"
@@ -140,7 +140,7 @@
             <FrameLayout
                 android:layout_width="58dp"
                 android:layout_height="58dp"
-                android:layout_marginTop="2dp">
+                android:layout_marginTop="0dp">
 
                 <com.google.android.material.progressindicator.CircularProgressIndicator
                     android:id="@+id/autoListenCountdown"
