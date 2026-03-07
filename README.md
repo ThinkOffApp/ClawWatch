@@ -141,6 +141,14 @@ That's it. Open ClawWatch on the watch.
 
 The watch speaks the response aloud via the built-in speaker.
 
+## Local Device Actions
+
+ClawWatch now intercepts some commands locally instead of sending them to the model first.
+
+- **Set a timer**: say `set a timer for 10 minutes` and ClawWatch will hand it off to the watch's internal timer app.
+
+This means timer requests use the real on-watch timer rather than an agent pretending it will wake you up later.
+
 ## V1.1 Improvements (Next — priority order)
 
 ### 1. Core STT Quality [PRIORITY]

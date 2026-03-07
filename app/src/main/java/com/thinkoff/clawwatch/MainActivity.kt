@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.BatteryManager
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.AlarmClock
 import android.util.Log
 import android.view.ViewConfiguration
 import android.view.MotionEvent
@@ -62,6 +63,10 @@ class MainActivity : AppCompatActivity() {
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private enum class AvatarType { ANT, LOBSTER, ROBOT, BOY, GIRL }
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
+    private data class TimerCommand(
+        val totalSeconds: Int,
+        val spokenDuration: String
+    )
     private lateinit var gestureDetector: GestureDetector
     private var currentAvatarIndex = 0
     private var useEmojiFallback = false
@@ -349,6 +354,7 @@ class MainActivity : AppCompatActivity() {
                     consumed = true
                     cancelAutoListenWindow()
                     voiceEngine.stopListening()
+                    if (handleLocalCommand(text, token)) return@runOnUiThread
                     binding.queryText.text = "\u201c$text\u201d"
                     askClaw(text, token)
                 }
@@ -364,6 +370,115 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    private fun handleLocalCommand(prompt: String, token: Int): Boolean {
+        val timer = parseTimerCommand(prompt) ?: return false
+        return launchSystemTimer(timer, token)
+    }
+
+    private fun parseTimerCommand(prompt: String): TimerCommand? {
+        val normalized = prompt.lowercase().replace('-', ' ')
+        if (!normalized.contains("timer")) return null
+
+        val match = Regex(
+            "\\b((?:\\d+)|(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty)(?:\\s+(?:one|two|three|four|five|six|seven|eight|nine))?)\\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)\\b"
+        ).find(normalized) ?: return null
+
+        val amount = parseSpokenNumber(match.groupValues[1]) ?: return null
+        if (amount <= 0) return null
+
+        val unit = match.groupValues[2]
+        val multiplier = when {
+            unit.startsWith("hour") || unit.startsWith("hr") -> 3600
+            unit.startsWith("minute") || unit.startsWith("min") -> 60
+            else -> 1
+        }
+        val totalSeconds = amount * multiplier
+        if (totalSeconds <= 0) return null
+
+        val normalizedUnit = when (multiplier) {
+            3600 -> if (amount == 1) "hour" else "hours"
+            60 -> if (amount == 1) "minute" else "minutes"
+            else -> if (amount == 1) "second" else "seconds"
+        }
+        return TimerCommand(
+            totalSeconds = totalSeconds,
+            spokenDuration = "$amount $normalizedUnit"
+        )
+    }
+
+    private fun parseSpokenNumber(raw: String): Int? {
+        val text = raw.trim().lowercase()
+        text.toIntOrNull()?.let { return it }
+        if (text == "a" || text == "an") return 1
+
+        val numberWords = mapOf(
+            "one" to 1,
+            "two" to 2,
+            "three" to 3,
+            "four" to 4,
+            "five" to 5,
+            "six" to 6,
+            "seven" to 7,
+            "eight" to 8,
+            "nine" to 9,
+            "ten" to 10,
+            "eleven" to 11,
+            "twelve" to 12,
+            "thirteen" to 13,
+            "fourteen" to 14,
+            "fifteen" to 15,
+            "sixteen" to 16,
+            "seventeen" to 17,
+            "eighteen" to 18,
+            "nineteen" to 19,
+            "twenty" to 20,
+            "thirty" to 30,
+            "forty" to 40,
+            "fifty" to 50,
+            "sixty" to 60
+        )
+
+        val parts = text.split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (parts.isEmpty() || parts.size > 2) return null
+        if (parts.size == 1) return numberWords[parts[0]]
+
+        val tens = numberWords[parts[0]] ?: return null
+        val ones = numberWords[parts[1]] ?: return null
+        if (tens !in setOf(20, 30, 40, 50, 60) || ones !in 1..9) return null
+        return tens + ones
+    }
+
+    private fun launchSystemTimer(timer: TimerCommand, token: Int): Boolean {
+        val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
+            putExtra(AlarmClock.EXTRA_LENGTH, timer.totalSeconds)
+            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+            putExtra(AlarmClock.EXTRA_MESSAGE, "Set by ClawWatch")
+        }
+        if (intent.resolveActivity(packageManager) == null) {
+            return false
+        }
+
+        return try {
+            startActivity(intent)
+            val confirmation = "Okay. I set a ${timer.spokenDuration} timer on the watch."
+            setState(State.SPEAKING)
+            startSpeakingPreview(confirmation)
+            voiceEngine.speak(confirmation) {
+                runOnUiThread {
+                    if (token == interactionToken) {
+                        stopSpeakingPreview()
+                        setState(State.IDLE)
+                        setStatus("Tap to talk")
+                    }
+                }
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to launch system timer", e)
+            false
+        }
     }
 
     private fun askClaw(prompt: String, token: Int) {
