@@ -15,7 +15,7 @@
 
 Tap. Speak. Get an answer. No cloud STT, no phone dependency, no latency from middlemen.
 
-ClawWatch runs [NullClaw](https://github.com/nullclaw/nullclaw) — a 2.8 MB static ARM binary — directly on a Galaxy Watch, paired with offline speech recognition (Vosk) and the built-in TTS engine. The agent talks to Claude Opus 4.6 (or any model you configure) and speaks the response back through the watch speaker.
+ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` as a static ARM binary, paired with offline speech recognition (Vosk) and the built-in TTS engine. The current live response path uses Kotlin-side Anthropic calls, while the bundled NullClaw runtime remains in place for local agent state and the native watch runtime path.
 
 **[Watch the ClawWatch 1.0.0 launch video](assets/videos/clawwatch-launch-1.0.0.mp4)**
 
@@ -71,13 +71,14 @@ Everything except the LLM call runs on the watch itself. No companion app needed
 brew install zig   # must be 0.15.2
 ```
 
-### 2. Build NullClaw for ARM Android
+### 2. Build NullClaw for the watch runtime
 
 ```bash
 git clone https://github.com/nullclaw/nullclaw
 cd nullclaw
+git checkout v2026.3.7
 zig build -Dtarget=arm-linux-musleabihf -Doptimize=ReleaseSmall
-cp zig-out/bin/nullclaw ../ClawWatch/app/src/main/assets/nullclaw
+cp zig-out/bin/nullclaw ../ClawWatch/app/src/main/jniLibs/armeabi-v7a/libnullclaw.so
 ```
 
 ### 3. Configure
