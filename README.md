@@ -150,6 +150,24 @@ ClawWatch now intercepts some commands locally instead of sending them to the mo
 
 This means timer requests use the real on-watch timer rather than an agent pretending it will wake you up later.
 
+## Context-Driven Micro-Event Layer
+
+ClawWatch is moving toward a richer avatar system where visual events are not just decorative loops, but reactions tied to real context.
+
+Examples:
+- the robot's eyes may briefly glow when it locks onto a longer request or switches into an active search state
+- a character may change expression or tint based on low battery, late-night mode, or live-search behavior
+- listening pulses can react to real speech activity instead of generic idle animation
+
+The important rule is that these micro-events should be explainable. If a user asks, `what happened to your eyes?`, the agent should be able to answer truthfully because the app knows why the visual event fired.
+
+That means each micro-event should be:
+- **context-driven** — triggered by something real such as prompt length, partial speech activity, search mode, battery level, time of day, or other device state
+- **rare enough to feel meaningful** — not constant visual noise
+- **internally legible** — the app records a short reason for the event so the agent can explain it in plain language
+
+The goal is to make ClawWatch feel more alive without becoming fake, random, or overly theatrical.
+
 ## V1.1 Improvements (Next — priority order)
 
 ### 1. Core STT Quality [PRIORITY]
