@@ -2,4 +2,6 @@
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/ic_avatar_ant_base">
     <target android:name="head_group" android:animation="@anim/anim_idle_breathe" />
+    <target android:name="antenna_left" android:animation="@anim/anim_antenna_left_sway" />
+    <target android:name="antenna_right" android:animation="@anim/anim_antenna_right_sway" />
 </animated-vector>

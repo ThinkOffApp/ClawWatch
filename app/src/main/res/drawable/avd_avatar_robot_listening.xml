@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/ic_avatar_robot_base">
-    <target android:name="status_ring" android:animation="@anim/anim_listening_pulse" />
     <target android:name="head_group" android:animation="@anim/anim_idle_breathe" />
+    <target android:name="left_pod" android:animation="@anim/anim_claw_left_drift" />
+    <target android:name="right_pod" android:animation="@anim/anim_claw_right_drift" />
 </animated-vector>

@@ -2,4 +2,6 @@
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/ic_avatar_robot_base">
     <target android:name="head_group" android:animation="@anim/anim_idle_breathe" />
+    <target android:name="left_pod" android:animation="@anim/anim_claw_left_drift" />
+    <target android:name="right_pod" android:animation="@anim/anim_claw_right_drift" />
 </animated-vector>

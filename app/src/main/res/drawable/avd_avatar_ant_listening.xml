@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/ic_avatar_ant_base">
-    <target android:name="status_ring" android:animation="@anim/anim_listening_pulse" />
     <target android:name="head_group" android:animation="@anim/anim_idle_breathe" />
+    <target android:name="antenna_left" android:animation="@anim/anim_listening_antenna_left" />
+    <target android:name="antenna_right" android:animation="@anim/anim_listening_antenna_right" />
 </animated-vector>

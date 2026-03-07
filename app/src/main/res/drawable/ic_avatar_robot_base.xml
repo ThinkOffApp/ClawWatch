@@ -1,20 +1,52 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp" android:height="200dp"
     android:viewportWidth="200" android:viewportHeight="200">
-    <group android:name="head_group" android:pivotX="100" android:pivotY="100">
-        <path android:fillColor="#C2185B" android:pathData="M55,60 h90 v70 q0,20 -45,20 q-45,0 -45,-20 Z" />
-        <path android:fillColor="#880E4F" android:pathData="M60,65 h80 v60 q0,15 -40,15 q-40,0 -40,-15 Z" />
-        <path android:fillColor="#FF9800" android:pathData="M45,90 h10 v30 h-10 Z" />
-        <path android:fillColor="#FF9800" android:pathData="M145,90 h10 v30 h-10 Z" />
-        <path android:fillColor="#1E1E1E" android:pathData="M70,85 h60 v25 q0,10 -30,10 q-30,0 -30,-10 Z" />
-        <path android:strokeColor="#CDDC39" android:strokeWidth="2" android:fillColor="#00000000" android:pathData="M70,85 h60 v25 q0,10 -30,10 q-30,0 -30,-10 Z" />
+    <group android:name="head_group" android:pivotX="100" android:pivotY="102">
+        <path
+            android:fillColor="#0B0B14"
+            android:fillAlpha="0.35"
+            android:pathData="M100,112 m -40,0 a 40,42 0 1,0 80,0 a 40,42 0 1,0 -80,0" />
 
-        <group android:name="eyes" android:pivotX="100" android:pivotY="95">
-            <path android:fillColor="#FFC107" android:pathData="M80,95 A8,8 0 1,1 80,94.9 Z" />
-            <path android:fillColor="#FFC107" android:pathData="M120,95 A8,8 0 1,1 120,94.9 Z" />
+        <path
+            android:fillColor="#E53982"
+            android:pathData="M60,72 h80 a10,10 0 0,1 10,10 v40 a20,20 0 0,1 -20,20 h-60 a20,20 0 0,1 -20,-20 v-40 a10,10 0 0,1 10,-10 Z" />
+        <path
+            android:fillColor="#A81C5D"
+            android:pathData="M68,80 h64 a10,10 0 0,1 10,10 v30 a16,16 0 0,1 -16,16 h-52 a16,16 0 0,1 -16,-16 v-30 a10,10 0 0,1 10,-10 Z" />
+        <path
+            android:fillColor="#FF77A7"
+            android:fillAlpha="0.18"
+            android:pathData="M78,80 h44 q8,0 8,8 v8 h-60 v-8 q0,-8 8,-8 Z" />
+
+        <group android:name="left_pod" android:pivotX="50" android:pivotY="102">
+            <path android:fillColor="#F59E0B" android:pathData="M48,92 h12 v28 h-12 Z" />
+            <path android:fillColor="#FFC14D" android:pathData="M42,94 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0" />
         </group>
-        <group android:name="mouth" android:pivotX="100" android:pivotY="130">
-            <path android:strokeColor="#FF9800" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M85,130 h30" />
+        <group android:name="right_pod" android:pivotX="150" android:pivotY="102">
+            <path android:fillColor="#F59E0B" android:pathData="M140,92 h12 v28 h-12 Z" />
+            <path android:fillColor="#FFC14D" android:pathData="M158,94 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0" />
+        </group>
+
+        <path
+            android:fillColor="#1A1C24"
+            android:pathData="M74,92 h52 a8,8 0 0,1 8,8 v18 a10,10 0 0,1 -10,10 h-48 a10,10 0 0,1 -10,-10 v-18 a8,8 0 0,1 8,-8 Z" />
+        <path
+            android:strokeColor="#C7F464"
+            android:strokeWidth="2"
+            android:fillColor="#00000000"
+            android:pathData="M74,92 h52 a8,8 0 0,1 8,8 v18 a10,10 0 0,1 -10,10 h-48 a10,10 0 0,1 -10,-10 v-18 a8,8 0 0,1 8,-8 Z" />
+
+        <group android:name="eyes" android:pivotX="100" android:pivotY="105">
+            <path android:fillColor="#FFC107" android:pathData="M84,106 m -7,0 a 7,7 0 1,0 14,0 a 7,7 0 1,0 -14,0" />
+            <path android:fillColor="#FFC107" android:pathData="M116,106 m -7,0 a 7,7 0 1,0 14,0 a 7,7 0 1,0 -14,0" />
+        </group>
+        <group android:name="mouth" android:pivotX="100" android:pivotY="129">
+            <path
+                android:strokeColor="#FFB74D"
+                android:strokeWidth="4"
+                android:strokeLineCap="round"
+                android:fillColor="#00000000"
+                android:pathData="M86,129 h28" />
         </group>
     </group>
 </vector>

@@ -1,22 +1,26 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp" android:height="200dp"
     android:viewportWidth="200" android:viewportHeight="200">
-    <group android:name="head_group" android:pivotX="100" android:pivotY="100">
-        <path android:fillColor="#1976D2" android:pathData="M50,180 C50,150 70,140 100,140 C130,140 150,150 150,180 Z" />
-        <path android:fillColor="#FFCCBC" android:pathData="M65,70 C65,40 135,40 135,70 C135,120 115,130 100,130 C85,130 65,120 65,70 Z" />
-        <path android:fillColor="#3E2723" android:pathData="M60,70 C60,20 140,20 140,70 Q130,40 100,45 Q80,45 60,70 Z" />
-        <path android:fillColor="#FBE9E7" android:pathData="M55,90 A8,8 0 1,1 55,89.9 Z" />
-        <path android:fillColor="#FBE9E7" android:pathData="M145,90 A8,8 0 1,1 145,89.9 Z" />
+    <group android:name="head_group" android:pivotX="100" android:pivotY="104">
+        <path android:fillColor="#0D1420" android:fillAlpha="0.2" android:pathData="M100,118 m -34,0 a 34,42 0 1,0 68,0 a 34,42 0 1,0 -68,0" />
+        <path android:fillColor="#2466C7" android:pathData="M54,182 C58,154 75,143 100,143 C125,143 142,154 146,182 Z" />
+        <path android:fillColor="#F8C8B6" android:pathData="M66,73 C66,46 134,46 134,73 C134,119 115,132 100,132 C85,132 66,119 66,73 Z" />
+        <path android:fillColor="#4B312C" android:pathData="M61,71 C63,35 93,21 122,28 C136,32 143,47 139,69 C132,53 120,47 103,47 C87,47 72,54 61,71 Z" />
+        <path android:fillColor="#6D4A43" android:fillAlpha="0.22" android:pathData="M76,33 C89,26 108,25 122,31 C112,30 97,33 84,41 Z" />
+        <path android:fillColor="#FCECE6" android:pathData="M59,92 m -7,0 a 7,7 0 1,0 14,0 a 7,7 0 1,0 -14,0" />
+        <path android:fillColor="#FCECE6" android:pathData="M141,92 m -7,0 a 7,7 0 1,0 14,0 a 7,7 0 1,0 -14,0" />
 
-        <group android:name="eyes" android:pivotX="100" android:pivotY="85">
-            <path android:fillColor="#212121" android:pathData="M80,85 A5,5 0 1,1 80,84.9 Z" />
-            <path android:fillColor="#FFFFFF" android:pathData="M81,83 A1.5,1.5 0 1,1 81,82.9 Z" />
-            <path android:fillColor="#212121" android:pathData="M120,85 A5,5 0 1,1 120,84.9 Z" />
-            <path android:fillColor="#FFFFFF" android:pathData="M121,83 A1.5,1.5 0 1,1 121,82.9 Z" />
+        <group android:name="eyes" android:pivotX="100" android:pivotY="90">
+            <path android:fillColor="#242424" android:pathData="M83,90 m -5,0 a 5,6 0 1,0 10,0 a 5,6 0 1,0 -10,0" />
+            <path android:fillColor="#FFFFFF" android:pathData="M84,87 m -1.5,0 a 1.5,1.5 0 1,0 3,0 a 1.5,1.5 0 1,0 -3,0" />
+            <path android:fillColor="#242424" android:pathData="M117,90 m -5,0 a 5,6 0 1,0 10,0 a 5,6 0 1,0 -10,0" />
+            <path android:fillColor="#FFFFFF" android:pathData="M118,87 m -1.5,0 a 1.5,1.5 0 1,0 3,0 a 1.5,1.5 0 1,0 -3,0" />
         </group>
-        
-        <group android:name="mouth" android:pivotX="100" android:pivotY="110">
-            <path android:fillColor="#D84315" android:pathData="M90,108 Q100,118 110,108 Q100,112 90,108 Z" />
+
+        <group android:name="mouth" android:pivotX="100" android:pivotY="113">
+            <path
+                android:fillColor="#D76849"
+                android:pathData="M91,111 Q100,119 109,111 Q100,116 91,111 Z" />
         </group>
     </group>
 </vector>

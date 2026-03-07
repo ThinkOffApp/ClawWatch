@@ -2,5 +2,5 @@
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/ic_avatar_boy_base">
     <target android:name="mouth" android:animation="@anim/anim_talking_mouth" />
-    <target android:name="head_group" android:animation="@anim/anim_idle_breathe" />
+    <target android:name="head_group" android:animation="@anim/anim_talking_body" />
 </animated-vector>
