@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_LIVE_TEXT_ENABLED = "live_text_enabled"
         private const val ACCENT_COLOR = 0xFFD4A5E9.toInt()
         private const val LOW_BATTERY_COLOR = 0xFF9CA3AF.toInt()
-        private val AVATARS = listOf("ant", "lobster", "robot", "boy", "girl")
+        private val AVATARS = listOf("ant", "lobster", "orange_lobster", "robot", "boy", "girl")
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     private val prefs by lazy { SecurePrefs.watch(this) }
 
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
-    private enum class AvatarType { ANT, LOBSTER, ROBOT, BOY, GIRL }
+    private enum class AvatarType { ANT, LOBSTER, ORANGE_LOBSTER, ROBOT, BOY, GIRL }
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private data class TimerCommand(
         val totalSeconds: Int,
@@ -101,6 +101,14 @@ class MainActivity : AppCompatActivity() {
             AvatarState.ERROR to "🐜"
         ),
         AvatarType.LOBSTER to mapOf(
+            AvatarState.IDLE to "🦞",
+            AvatarState.LISTENING to "🦞",
+            AvatarState.THINKING to "🦞",
+            AvatarState.SEARCHING to "🦞",
+            AvatarState.SPEAKING to "🦞",
+            AvatarState.ERROR to "🦞"
+        ),
+        AvatarType.ORANGE_LOBSTER to mapOf(
             AvatarState.IDLE to "🦞",
             AvatarState.LISTENING to "🦞",
             AvatarState.THINKING to "🦞",
@@ -529,6 +537,7 @@ class MainActivity : AppCompatActivity() {
     private fun currentAvatarType(): AvatarType {
         return when ((prefs.getString(PREF_AVATAR_TYPE, "lobster") ?: "lobster").lowercase()) {
             "lobster" -> AvatarType.LOBSTER
+            "orange_lobster" -> AvatarType.ORANGE_LOBSTER
             "robot" -> AvatarType.ROBOT
             "boy" -> AvatarType.BOY
             "girl" -> AvatarType.GIRL
@@ -625,6 +634,7 @@ class MainActivity : AppCompatActivity() {
     private fun avatarTypeKey(type: AvatarType): String = when (type) {
         AvatarType.ANT -> "ant"
         AvatarType.LOBSTER -> "lobster"
+        AvatarType.ORANGE_LOBSTER -> "orange_lobster"
         AvatarType.ROBOT -> "robot"
         AvatarType.BOY -> "boy"
         AvatarType.GIRL -> "girl"
