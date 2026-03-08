@@ -7,8 +7,9 @@ Tap. Speak. Get an answer. No cloud STT, no phone dependency, no latency from mi
 ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` as a static ARM binary, paired with offline speech recognition (Vosk) and the built-in TTS engine. The current live response path uses Kotlin-side Anthropic calls, while the bundled NullClaw runtime remains in place for local agent state and the native watch runtime path.
 
 <p align="center">
-  <a href="assets/videos/clawwatch-v2-launch.mp4"><strong>▶ Watch the ClawWatch V2.0 demo video</strong></a>
+  <img src="assets/screenshots/v2/clawwatch-v2-demo-still.png" alt="ClawWatch V2.0 demo still" width="260">
 </p>
+<p align="center"><i>ClawWatch 2.0 in motion: live avatars, local body sensing, and live room connectivity on the wrist.</i></p>
 
 ## ClawWatch V2.0
 
