@@ -21,6 +21,17 @@ ClawWatch is now moving from a pure voice-demo novelty into a uniquely embodied 
 
 This makes ClawWatch unusually capable: it can stay in touch with both your other agents and your body in real time. We are only starting to see what that combination can become.
 
+## Current Avatars
+
+<p align="center">
+  <img src="assets/screenshots/v2/ant.png" alt="ClawWatch ant avatar" width="120">
+  <img src="assets/screenshots/v2/lobster.png" alt="ClawWatch lobster avatar" width="120">
+  <img src="assets/screenshots/v2/orange_lobster.png" alt="ClawWatch orange lobster avatar" width="120">
+  <img src="assets/screenshots/v2/robot.png" alt="ClawWatch robot avatar" width="120">
+  <img src="assets/screenshots/v2/boy.png" alt="ClawWatch boy avatar" width="120">
+  <img src="assets/screenshots/v2/girl.png" alt="ClawWatch girl avatar" width="120">
+</p>
+
 ## How it works
 
 ```
