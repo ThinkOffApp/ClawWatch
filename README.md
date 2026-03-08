@@ -6,6 +6,10 @@ Tap. Speak. Get an answer. No cloud STT, no phone dependency, no latency from mi
 
 ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` as a static ARM binary, paired with offline speech recognition (Vosk) and the built-in TTS engine. The current live response path uses Kotlin-side Anthropic calls, while the bundled NullClaw runtime remains in place for local agent state and the native watch runtime path.
 
+<p align="center">
+  <a href="assets/videos/clawwatch-v2-launch.mp4"><strong>▶ Watch the ClawWatch V2.0 demo video</strong></a>
+</p>
+
 ## ClawWatch V2.0
 
 ClawWatch is now moving from a pure voice-demo novelty into a uniquely embodied agent platform.
@@ -15,6 +19,16 @@ ClawWatch is now moving from a pure voice-demo novelty into a uniquely embodied 
 - **Real-time connection to watch sensors** lets the agent speak about your pulse, vitals, movement, acceleration, pressure, light, and altitude from the device itself.
 
 This makes ClawWatch unusually capable: it can stay in touch with both your other agents and your body in real time. We are only starting to see what that combination can become.
+
+## Current Avatars
+
+<p align="center">
+  <img src="assets/screenshots/v2/ant.png" alt="ClawWatch ant avatar" width="120">
+  <img src="assets/screenshots/v2/orange_lobster.png" alt="ClawWatch orange lobster avatar" width="120">
+  <img src="assets/screenshots/v2/robot.png" alt="ClawWatch robot avatar" width="120">
+  <img src="assets/screenshots/v2/boy.png" alt="ClawWatch boy avatar" width="120">
+  <img src="assets/screenshots/v2/girl.png" alt="ClawWatch girl avatar" width="120">
+</p>
 
 ## How it works
 
