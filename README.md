@@ -19,6 +19,16 @@ ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` a
 
 **[Watch the ClawWatch 1.0.0 launch video](assets/videos/clawwatch-launch-1.0.0.mp4)**
 
+## ClawWatch V2.0
+
+ClawWatch is now moving from a pure voice-demo novelty into a uniquely embodied agent platform.
+
+- **New vector graphics avatars** make the watch feel alive as a character, not just a speech bubble on a wrist.
+- **Live connection to discussions and other agents through our Agent Kit** lets ClawWatch stay in touch with rooms, family updates, and the rest of the colony in real time.
+- **Real-time connection to watch sensors** lets the agent speak about your pulse, vitals, movement, acceleration, pressure, light, and altitude from the device itself.
+
+This makes ClawWatch unusually capable: it can stay in touch with both your other agents and your body in real time. We are only starting to see what that combination can become.
+
 ## Screenshots
 
 <p align="center">
@@ -142,13 +152,25 @@ That's it. Open ClawWatch on the watch.
 
 The watch speaks the response aloud via the built-in speaker.
 
-## Local Device Actions
+## Real-Time Local Actions
 
 ClawWatch now intercepts some commands locally instead of sending them to the model first.
 
 - **Set a timer**: say `set a timer for 10 minutes` and ClawWatch will hand it off to the watch's internal timer app.
+- **Check pulse**: say `what is my pulse` and ClawWatch will read the watch heart-rate sensor directly.
+- **Check vitals**: say `check my vitals` to get a live snapshot of pulse, movement, light, pressure, and other available watch signals.
+- **Check the family**: say `what's going on with the family` and ClawWatch will summarize the configured Ant Farm room updates.
 
-This means timer requests use the real on-watch timer rather than an agent pretending it will wake you up later.
+This means ClawWatch can act as a real local watch agent instead of bluffing about capabilities it does not have.
+
+## Agent Kit + Body Loop
+
+ClawWatch now bridges two kinds of live context at once:
+
+- **Agent context** from Ant Farm rooms and other agents through the Agent Kit
+- **Body/device context** from the watch's own sensors and runtime state
+
+That combination is the point of the project. ClawWatch is not just another chatbot UI miniaturized onto a watch face. It is an agent that can remain in touch with your conversations, your tools, and your physical state at the same time.
 
 ## Context-Driven Micro-Event Layer
 
@@ -167,48 +189,6 @@ That means each micro-event should be:
 - **internally legible** — the app records a short reason for the event so the agent can explain it in plain language
 
 The goal is to make ClawWatch feel more alive without becoming fake, random, or overly theatrical.
-
-## V1.1 Improvements (Next — priority order)
-
-### 1. Core STT Quality [PRIORITY]
-- VAD (Voice Activity Detection) tuning to ignore background noise
-- **Dev model switcher**: hot-swap between 2 STT models live on watch
-  - Bundled: vosk-model-small-en-us-0.15 (40MB, current default)
-  - Optional download: vosk-model-en-us-0.22-lgraph (128MB, dynamic graph, ~2x better accuracy)
-
-### 2. Avatar Animations & Fallback [IMPROVE]
-- Replace static emoji-style avatars with real animations (AnimatedVectorDrawable).
-- Implement subtle outer ring pulse for action indicator.
-- **Maintain emoji avatars as a simple text-based fallback system.**
-- Note: Avatar animators, 250ms speaking-preview, and countdown rings will be gated harder for battery preservation (P3).
-
-## Codex Codebase Review Findings (v1.1 Action Items)
-
-**P1 — Fix Now**
-- **Vosk Recognizer memory leak (Pro)**: VoiceEngine allocates new Recognizer every `startListening()` and never closes it → native memory leak across conversations.
-- **Security**: Plaintext API key leakage in ClawRunner + admin temp files + Pro SharedPrefs. Define the secret boundary now and use revocable session credentials instead.
-
-**P2 — Fix Before V1.1 Ships**
-- **opus_tool silently drops conversation memory**: Direct mode uses `buildMessagesWithContext` (appends turns), but `opus_tool` builds requests from only current prompt.
-- **Battery — triple Data Layer sync**: Phone-to-watch sync sends up to 3 separate urgent Data Layer writes per settings update.
-- **Pro security surface**: Manifest declares unused services/permissions (`FOREGROUND_SERVICE_MICROPHONE`, `WAKE_LOCK`, `ClawService`). Remove/defer until architecture is real.
-- **RAG fallback broken**: No real no-key search fallback despite DDG/Open-Meteo helper code existing.
-
-## Watch UI Spec (V1)
-
-- Layout after splash: `avatar` + one adaptive button below it.
-- State model: `idle`, `listening`, `thinking`, `searching`, `speaking`, `error`.
-- Adaptive button behavior:
-  - `idle` -> tap starts listening
-  - `listening` -> tap stops listening
-  - `thinking/searching/speaking` -> tap cancels current flow
-  - `error` -> tap retries (starts listening)
-- Auto-listen: after speaking finishes, mic opens automatically for a short follow-up window; if no speech is detected, it returns to idle.
-- Low battery rule: when battery is below 20%, avatar turns greyer and avatar animations stop.
-- Avatar options: `ant`, `lobster`, `robot`, `boy`, `girl`.
-- Conversation memory: rolling recent turns are included in each query for follow-ups.
-- Screen policy: screen stays awake during active conversation states (`listening/thinking/searching/speaking`) and returns to normal sleep in idle.
-- Action bubble: compact flat bubble (no dark halo/ring overlap).
 
 ## Admin Panel
 
