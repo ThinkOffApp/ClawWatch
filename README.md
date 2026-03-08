@@ -10,6 +10,9 @@ ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` a
   <img src="assets/screenshots/v2/clawwatch-v2-demo-still.png" alt="ClawWatch V2.0 demo still" width="260">
 </p>
 <p align="center"><i>ClawWatch 2.0 in motion: live avatars, local body sensing, and live room connectivity on the wrist.</i></p>
+<p align="center">
+  <a href="https://x.com/petruspennanen/status/2030743559742083549?s=20"><strong>Watch the ClawWatch V2.0 clip on X</strong></a>
+</p>
 
 ## ClawWatch V2.0
 
