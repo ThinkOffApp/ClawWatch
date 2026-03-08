@@ -458,7 +458,7 @@ class ClawRunner(private val context: Context) {
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.setRequestProperty("Accept", "application/json")
-            conn.setRequestProperty("X-API-Key", apiKey)
+            conn.setRequestProperty("Authorization", "Bearer $apiKey")
             conn.connectTimeout = 10_000
             conn.readTimeout = 10_000
 
