@@ -671,10 +671,9 @@ class MainActivity : AppCompatActivity() {
         startSpeakingPreview(message)
         voiceEngine.speak(message) {
             runOnUiThread {
-                if (token == interactionToken) {
+                if (token == interactionToken && state == State.SPEAKING) {
                     stopSpeakingPreview()
-                    setState(State.IDLE)
-                    setStatus("Tap to talk")
+                    startListening(autoWindow = true)
                 }
             }
         }
