@@ -1,14 +1,3 @@
-<p align="center">
-  <a href="assets/videos/clawwatch-launch-1.0.0.mp4">
-    <img src="assets/videos/clawwatch-launch-1.0.0-preview.gif" alt="ClawWatch 1.0.0 launch video preview" width="220">
-  </a>
-</p>
-<p align="center">
-  <a href="assets/videos/clawwatch-launch-1.0.0.mp4"><strong>▶ Watch ClawWatch 1.0.0 launch video</strong></a>
-  ·
-  <a href="https://x.com/i/status/2028946464119165140">X post</a>
-</p>
-
 # ClawWatch
 
 **The first intelligent AI agent running natively on a smartwatch.**
@@ -17,43 +6,23 @@ Tap. Speak. Get an answer. No cloud STT, no phone dependency, no latency from mi
 
 ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` as a static ARM binary, paired with offline speech recognition (Vosk) and the built-in TTS engine. The current live response path uses Kotlin-side Anthropic calls, while the bundled NullClaw runtime remains in place for local agent state and the native watch runtime path.
 
-**[Watch the ClawWatch 1.0.0 launch video](assets/videos/clawwatch-launch-1.0.0.mp4)**
-
 ## ClawWatch V2.0
 
 ClawWatch is now moving from a pure voice-demo novelty into a uniquely embodied agent platform.
 
 - **New vector graphics avatars** make the watch feel alive as a character, not just a speech bubble on a wrist.
-- **Live connection to discussions and other agents through our Agent Kit** lets ClawWatch stay in touch with rooms, family updates, and the rest of the colony in real time.
+- **Live connection to discussions and other agents through our [Agent Kit](https://github.com/ThinkOffApp/ide-agent-kit)** lets ClawWatch stay in touch with rooms, family updates, and the rest of the colony in real time.
 - **Real-time connection to watch sensors** lets the agent speak about your pulse, vitals, movement, acceleration, pressure, light, and altitude from the device itself.
 
 This makes ClawWatch unusually capable: it can stay in touch with both your other agents and your body in real time. We are only starting to see what that combination can become.
 
-## Screenshots
-
-<p align="center">
-  <img src="assets/screenshots/watch-02.png" alt="Blank" width="120">
-  <img src="assets/screenshots/watch-03.png" alt="Ear" width="120">
-  <img src="assets/screenshots/watch-04.png" alt="Cloud" width="120">
-  <img src="assets/screenshots/watch-01.png" alt="Dots" width="120">
-</p>
-<p align="center"><i>Blank &nbsp;&bull;&nbsp; Ear &nbsp;&bull;&nbsp; Cloud &nbsp;&bull;&nbsp; Dots</i></p>
-
-## Architecture
-
-<p align="center">
-  <img src="docs/architecture.png" alt="ClawWatch Architecture" width="700">
-</p>
-
----
-
 ## How it works
 
 ```
-[tap mic] → Vosk STT (on-device, offline) → NullClaw → Claude Opus 4.6 → Android TTS → [watch speaks]
+[tap mic] → Vosk STT (on-device, offline) → local command/router → Kotlin Anthropic call or local watch action → Android TTS → [watch speaks]
 ```
 
-Everything except the LLM call runs on the watch itself. No companion app needed once deployed.
+Everything except the LLM call runs on the watch itself. Some requests never leave the device at all: timers, pulse, vitals, and family-room summaries can be handled through the watch runtime and configured room connections directly.
 
 ## Stack
 
@@ -167,7 +136,7 @@ This means ClawWatch can act as a real local watch agent instead of bluffing abo
 
 ClawWatch now bridges two kinds of live context at once:
 
-- **Agent context** from Ant Farm rooms and other agents through the Agent Kit
+- **Agent context** from Ant Farm rooms and other agents through the [Agent Kit](https://github.com/ThinkOffApp/ide-agent-kit)
 - **Body/device context** from the watch's own sensors and runtime state
 
 That combination is the point of the project. ClawWatch is not just another chatbot UI miniaturized onto a watch face. It is an agent that can remain in touch with your conversations, your tools, and your physical state at the same time.
