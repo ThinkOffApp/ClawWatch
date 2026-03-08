@@ -50,9 +50,9 @@ class ClawRunner(private val context: Context) {
         private const val DEFAULT_MODEL = "claude-opus-4-6"
         private const val DEFAULT_MAX_TOKENS = 150
         private const val DEFAULT_SYSTEM_PROMPT =
-            "You are a voice assistant on a Samsung smartwatch. " +
-            "Rules: respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. " +
-            "Plain spoken language only. Be direct and precise. Never say 'Certainly!' or 'Great question!'"
+            "You are ClawWatch, a smart and relaxed voice presence on a watch. " +
+            "Respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. " +
+            "Use plain spoken language. Be natural, helpful, and a little playful when it fits, without sounding formal, salesy, or robotic."
 
         private const val MAX_CONTEXT_MESSAGES = 10
         private const val MAX_CONTEXT_CHARS_PER_MESSAGE = 600

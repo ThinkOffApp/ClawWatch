@@ -5,6 +5,7 @@ import android.animation.ValueAnimator
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.os.BatteryManager
 import android.os.Bundle
 import android.os.SystemClock
@@ -47,6 +48,7 @@ class MainActivity : AppCompatActivity() {
         private const val FAB_DEBOUNCE_MS = 300L
         private const val AUTO_LISTEN_WINDOW_MS = 3500L
         private const val AVATAR_SWIPE_THRESHOLD_DP = 24f
+        private const val PERMISSION_HEART_RATE = "android.permission.health.READ_HEART_RATE"
         private const val PREF_RAG_MODE = "rag_mode"
         private const val PREF_AVATAR_TYPE = "avatar_type"
         private const val PREF_LIVE_TEXT_ENABLED = "live_text_enabled"
@@ -58,14 +60,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var clawRunner: ClawRunner
     private lateinit var voiceEngine: VoiceEngine
+    private lateinit var dayPhaseManager: DayPhaseManager
+    private lateinit var vitalsReader: VitalsReader
     private val prefs by lazy { SecurePrefs.watch(this) }
 
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private enum class AvatarType { ANT, LOBSTER, ORANGE_LOBSTER, ROBOT, BOY, GIRL }
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
+    private enum class VitalsCommandType { SNAPSHOT, HEART_RATE }
     private data class TimerCommand(
         val totalSeconds: Int,
         val spokenDuration: String
+    )
+    private data class PendingVitalsCommand(
+        val type: VitalsCommandType,
+        val token: Int
     )
     private lateinit var gestureDetector: GestureDetector
     private var currentAvatarIndex = 0
@@ -80,16 +89,26 @@ class MainActivity : AppCompatActivity() {
     private var isAutoListenWindow = false
     private var countdownAnimator: ValueAnimator? = null
     private var avatarAnimator: ValueAnimator? = null
+    private var listeningPulseAnimator: ValueAnimator? = null
     private var speakingPreviewJob: Job? = null
     private var lastPartialStatusAt = 0L
     private var avatarSwipeStartX = 0f
     private var avatarSwipeStartY = 0f
     private var avatarSwipeActive = false
     private var avatarTouchStartAt = 0L
+    private var pendingVitalsCommand: PendingVitalsCommand? = null
 
     private val requestMic = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) startListening() else setStatus("Mic permission needed") }
+
+    private val requestVitalsPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        val pending = pendingVitalsCommand ?: return@registerForActivityResult
+        pendingVitalsCommand = null
+        runVitalsCommand(pending.type, pending.token)
+    }
 
     private val avatarExpressions: Map<AvatarType, Map<AvatarState, String>> = mapOf(
         AvatarType.ANT to mapOf(
@@ -149,6 +168,8 @@ class MainActivity : AppCompatActivity() {
 
         clawRunner = ClawRunner(this)
         voiceEngine = VoiceEngine(this)
+        dayPhaseManager = DayPhaseManager(this)
+        vitalsReader = VitalsReader(this)
         
         val prefs = getSharedPreferences("claw_prefs", 0)
         currentAvatarIndex = prefs.getInt("avatar_idx", 0)
@@ -169,6 +190,7 @@ class MainActivity : AppCompatActivity() {
         binding.fab.setOnClickListener { onFabTapped() }
         binding.saveKeyBtn.setOnClickListener { onSaveKey() }
         setupAvatarSwipeSwitch()
+        applyDayPhaseAppearance(dayPhaseManager.snapshotNow())
 
         lifecycleScope.launch { initialise() }
     }
@@ -249,8 +271,9 @@ class MainActivity : AppCompatActivity() {
                 State.IDLE -> "idle"
                 State.LISTENING -> "listening"
                 State.THINKING -> "thinking"
-                State.SEARCHING -> "thinking" // fallback to thinking for now
+                State.SEARCHING -> "searching"
                 State.SPEAKING -> "speaking"
+                State.ERROR -> "error"
                 else -> "idle"
             }
 
@@ -269,8 +292,9 @@ class MainActivity : AppCompatActivity() {
                 val drawable = ContextCompat.getDrawable(this, resId)
                 binding.avatarView.setImageDrawable(drawable)
                 
-                // Only animate if battery is healthy
-                if (getBatteryPercentage() > 20) {
+                // Only animate when the user is likely looking at the watch:
+                // active conversation states, not passive idle loops.
+                if (getBatteryPercentage() > 20 && shouldAnimateAvatarForState(s)) {
                     (drawable as? AnimatedVectorDrawable)?.start()
                 }
             }
@@ -279,10 +303,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun shouldAnimateAvatarForState(state: State): Boolean = when (state) {
+        State.LISTENING, State.THINKING, State.SEARCHING, State.SPEAKING -> true
+        else -> false
+    }
+
     private suspend fun initialise() {
         setStatus("Starting…")
         clawRunner.ensureInstalled()
         voiceEngine.initTts()
+        applyDayPhaseAppearance(dayPhaseManager.refreshIfStale())
         updateAvatarDrawable(State.IDLE)
 
         if (!clawRunner.hasApiKey()) {
@@ -374,6 +404,7 @@ class MainActivity : AppCompatActivity() {
                     val now = SystemClock.elapsedRealtime()
                     if (now - lastPartialStatusAt < 250L) return@runOnUiThread
                     lastPartialStatusAt = now
+                    pulseListeningAvatar()
                     setStatus(partial)
                 }
             }
@@ -381,8 +412,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleLocalCommand(prompt: String, token: Int): Boolean {
+        parseVitalsCommand(prompt)?.let { command ->
+            launchVitalsCommand(command, token)
+            return true
+        }
         val timer = parseTimerCommand(prompt) ?: return false
         return launchSystemTimer(timer, token)
+    }
+
+    private fun parseVitalsCommand(prompt: String): VitalsCommandType? {
+        val normalized = prompt.lowercase()
+        if (
+            normalized.contains("pulse") ||
+            normalized.contains("heart rate") ||
+            normalized.contains("heartbeat")
+        ) {
+            return VitalsCommandType.HEART_RATE
+        }
+        if (
+            normalized.contains("check my vitals") ||
+            normalized.contains("check vitals") ||
+            normalized.contains("my vitals") ||
+            normalized.contains("how am i doing")
+        ) {
+            return VitalsCommandType.SNAPSHOT
+        }
+        return null
     }
 
     private fun parseTimerCommand(prompt: String): TimerCommand? {
@@ -471,21 +526,125 @@ class MainActivity : AppCompatActivity() {
         return try {
             startActivity(intent)
             val confirmation = "Okay. I set a ${timer.spokenDuration} timer on the watch."
-            setState(State.SPEAKING)
-            startSpeakingPreview(confirmation)
-            voiceEngine.speak(confirmation) {
-                runOnUiThread {
-                    if (token == interactionToken) {
-                        stopSpeakingPreview()
-                        setState(State.IDLE)
-                        setStatus("Tap to talk")
-                    }
-                }
-            }
+            speakLocalResponse(confirmation, token)
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch system timer", e)
             false
+        }
+    }
+
+    private fun launchVitalsCommand(command: VitalsCommandType, token: Int) {
+        val missing = requiredVitalsPermissions(command)
+        if (missing.isNotEmpty()) {
+            pendingVitalsCommand = PendingVitalsCommand(command, token)
+            requestVitalsPermissions.launch(missing.toTypedArray())
+            return
+        }
+        runVitalsCommand(command, token)
+    }
+
+    private fun requiredVitalsPermissions(command: VitalsCommandType): List<String> {
+        val permissions = mutableListOf<String>()
+        if (command == VitalsCommandType.HEART_RATE || command == VitalsCommandType.SNAPSHOT) {
+            if (!hasPermission(PERMISSION_HEART_RATE)) {
+                permissions += PERMISSION_HEART_RATE
+            }
+        }
+        if (command == VitalsCommandType.SNAPSHOT && !hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
+            permissions += Manifest.permission.ACTIVITY_RECOGNITION
+        }
+        return permissions
+    }
+
+    private fun hasPermission(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun runVitalsCommand(command: VitalsCommandType, token: Int) {
+        val canReadHeartRate = hasPermission(PERMISSION_HEART_RATE)
+        val canReadSteps = hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)
+        if (command == VitalsCommandType.HEART_RATE && !canReadHeartRate) {
+            speakLocalResponse("I need heart-rate permission before I can read your pulse.", token)
+            return
+        }
+
+        queryJob?.cancel()
+        setState(State.THINKING)
+        setStatus("Checking vitals…")
+        queryJob = lifecycleScope.launch {
+            val snapshot = vitalsReader.readSnapshot(
+                batteryPercent = getBatteryPercentage(),
+                canReadHeartRate = canReadHeartRate,
+                canReadSteps = canReadSteps
+            )
+            if (token != interactionToken) return@launch
+
+            val response = when (command) {
+                VitalsCommandType.SNAPSHOT -> buildVitalsSummary(snapshot, canReadHeartRate, canReadSteps)
+                VitalsCommandType.HEART_RATE -> buildHeartRateSummary(snapshot)
+            }
+            binding.responseText.text = response
+            speakLocalResponse(response, token)
+        }
+    }
+
+    private fun buildHeartRateSummary(snapshot: VitalsReader.Snapshot): String {
+        val bpm = snapshot.heartRateBpm
+            ?: return "I couldn't get a clean pulse reading just now. Keep the watch snug and hold still for a moment, then ask again."
+        return "Your pulse is $bpm beats per minute. ${describeRecoveryState(snapshot, bpm)}"
+    }
+
+    private fun buildVitalsSummary(
+        snapshot: VitalsReader.Snapshot,
+        canReadHeartRate: Boolean,
+        canReadSteps: Boolean
+    ): String {
+        val details = mutableListOf<String>()
+        if (snapshot.heartRateBpm != null) {
+            details += "Pulse ${snapshot.heartRateBpm} beats per minute."
+        } else if (!canReadHeartRate) {
+            details += "Pulse is unavailable until you allow heart-rate access."
+        }
+        snapshot.ambientLux?.let { lux ->
+            details += when {
+                lux < 10f -> "Light around you is dim."
+                lux < 400f -> "Light around you is moderate."
+                else -> "Light around you is bright."
+            }
+        }
+        snapshot.pressureHpa?.let { pressure ->
+            details += "Air pressure is ${pressure.toInt()} hectopascals."
+        }
+        if (snapshot.stepCount != null) {
+            details += "The watch step counter reads ${snapshot.stepCount}."
+        } else if (!canReadSteps) {
+            details += "Step count is unavailable until you allow activity access."
+        }
+        details += describeRecoveryState(snapshot, snapshot.heartRateBpm)
+        return details.joinToString(" ").take(320)
+    }
+
+    private fun describeRecoveryState(snapshot: VitalsReader.Snapshot, bpm: Int?): String {
+        return when {
+            bpm != null && bpm >= 125 -> "Looks like you're exercising pretty hard right now."
+            bpm != null && bpm >= 95 -> "You seem active and warmed up."
+            snapshot.motionLevel == VitalsReader.MotionLevel.ACTIVE -> "Looks like you're getting good exercise right now."
+            snapshot.motionLevel == VitalsReader.MotionLevel.LIGHT -> "All good, you seem lightly active."
+            else -> "All good, you seem to be resting."
+        }
+    }
+
+    private fun speakLocalResponse(message: String, token: Int) {
+        setState(State.SPEAKING)
+        startSpeakingPreview(message)
+        voiceEngine.speak(message) {
+            runOnUiThread {
+                if (token == interactionToken) {
+                    stopSpeakingPreview()
+                    setState(State.IDLE)
+                    setStatus("Tap to talk")
+                }
+            }
         }
     }
 
@@ -731,9 +890,37 @@ class MainActivity : AppCompatActivity() {
         speakingPreviewJob = null
     }
 
+    private fun applyDayPhaseAppearance(snapshot: DayPhaseManager.Snapshot) {
+        runOnUiThread {
+            binding.avatarMoodGlow.backgroundTintList = ColorStateList.valueOf(snapshot.color)
+            binding.avatarMoodGlow.alpha = snapshot.alpha
+            binding.fab.backgroundTintList = ColorStateList.valueOf(snapshot.color)
+        }
+    }
+
+    private fun pulseListeningAvatar() {
+        if (state != State.LISTENING || isLowBattery()) return
+        listeningPulseAnimator?.cancel()
+        listeningPulseAnimator = ValueAnimator.ofFloat(1f, 1.045f, 1f).apply {
+            duration = 220L
+            addUpdateListener { animator ->
+                val scale = animator.animatedValue as Float
+                binding.avatarContainer.scaleX = scale
+                binding.avatarContainer.scaleY = scale
+            }
+            start()
+        }
+    }
+
     private fun setState(s: State) {
         state = s
         runOnUiThread {
+            if (s != State.LISTENING) {
+                listeningPulseAnimator?.cancel()
+                listeningPulseAnimator = null
+                binding.avatarContainer.scaleX = 1f
+                binding.avatarContainer.scaleY = 1f
+            }
             applyConversationScreenPolicy(s)
             binding.splashPanel.visibility = View.GONE
             binding.setupPanel.visibility  = if (s == State.SETUP)    View.VISIBLE else View.GONE

@@ -92,8 +92,9 @@ class MainActivity : AppCompatActivity() {
         val savedModel = prefs.getString("model", "claude-opus-4-6") ?: "claude-opus-4-6"
         modelSpinner.setSelection(models.indexOf(savedModel).coerceAtLeast(0))
         systemPromptInput.setText(prefs.getString("system_prompt",
-            "You are a voice assistant on a Samsung smartwatch. " +
-            "Respond in 1-3 short sentences. No markdown. Plain spoken language.") ?: "")
+            "You are ClawWatch, a smart and relaxed voice presence on a watch. " +
+            "Respond in 1-3 short sentences. No markdown. Use plain spoken language. " +
+            "Be natural, helpful, and a little playful when it fits.") ?: "")
         val tokens = prefs.getInt("max_tokens", 150)
         maxTokensSeekBar.progress = ((tokens - 50) / 5).coerceIn(0, 90)
         maxTokensLabel.text = "$tokens"

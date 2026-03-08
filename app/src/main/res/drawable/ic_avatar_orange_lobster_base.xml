@@ -145,7 +145,7 @@
                 android:strokeWidth="4"
                 android:strokeLineCap="round"
                 android:fillColor="#00000000"
-                android:pathData="M88,82 Q100,94 112,82" />
+                android:pathData="M90,84 Q100,90 110,84" />
         </group>
     </group>
 </vector>

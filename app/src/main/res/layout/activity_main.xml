@@ -114,20 +114,25 @@
             android:minHeight="24dp"
             android:background="@drawable/live_text_bg" />
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="8dp">
+            android:layout_height="match_parent">
 
             <FrameLayout
                 android:id="@+id/avatarContainer"
-                android:layout_width="176dp"
-                android:layout_height="168dp"
-                android:layout_marginBottom="-6dp"
-                android:background="@drawable/avatar_bg"
+                android:layout_width="188dp"
+                android:layout_height="184dp"
+                android:layout_gravity="center_horizontal|top"
+                android:layout_marginTop="6dp"
                 android:padding="0dp">
+
+                <View
+                    android:id="@+id/avatarMoodGlow"
+                    android:layout_width="156dp"
+                    android:layout_height="148dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/avatar_mood_glow_bg"
+                    android:alpha="0.0" />
 
                 <ImageView
                     android:id="@+id/avatarView"
@@ -140,7 +145,9 @@
             <FrameLayout
                 android:layout_width="58dp"
                 android:layout_height="58dp"
-                android:layout_marginTop="0dp">
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="10dp">
 
                 <com.google.android.material.progressindicator.CircularProgressIndicator
                     android:id="@+id/autoListenCountdown"
@@ -156,8 +163,8 @@
 
                 <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/fab"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
                     android:layout_gravity="center"
                     android:contentDescription="Tap to talk"
                     android:background="@drawable/action_bubble_bg"
@@ -174,7 +181,7 @@
                     android:textSize="18sp"
                     android:textStyle="bold" />
             </FrameLayout>
-        </LinearLayout>
+        </FrameLayout>
 
         <!-- Legacy bound views kept hidden for compatibility -->
         <TextView

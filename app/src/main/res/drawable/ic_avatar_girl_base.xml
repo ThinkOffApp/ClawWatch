@@ -2,14 +2,19 @@
     android:width="200dp" android:height="200dp"
     android:viewportWidth="200" android:viewportHeight="200">
     <group android:name="head_group" android:pivotX="100" android:pivotY="104">
-        <path android:fillColor="#0E1715" android:fillAlpha="0.18" android:pathData="M100,118 m -34,0 a 34,42 0 1,0 68,0 a 34,42 0 1,0 -68,0" />
-        <path android:fillColor="#0B9D8E" android:pathData="M54,182 C58,160 76,143 100,143 C124,143 142,160 146,182 Z" />
-        <path android:fillColor="#FFFFFF" android:pathData="M72,160 h56 v22 h-56 Z" />
-        <path android:fillColor="#F9D8B1" android:pathData="M66,74 C66,47 134,47 134,74 C134,118 115,128 100,128 C85,128 66,118 66,74 Z" />
-        <path android:fillColor="#F6C63B" android:pathData="M61,82 C56,42 88,24 116,28 C136,31 149,49 141,81 C137,56 123,42 102,42 C81,42 69,55 61,82 Z" />
-        <path android:fillColor="#E4B527" android:pathData="M64,82 C54,101 52,117 71,112 C80,109 71,91 64,82 Z" />
-        <path android:fillColor="#E4B527" android:pathData="M136,82 C146,101 148,117 129,112 C120,109 129,91 136,82 Z" />
-        <path android:fillColor="#FFE683" android:fillAlpha="0.25" android:pathData="M81,34 C93,28 109,28 121,33 C112,33 99,36 87,43 Z" />
+        <path android:fillColor="#0E1715" android:fillAlpha="0.18" android:pathData="M100,120 m -36,0 a 36,42 0 1,0 72,0 a 36,42 0 1,0 -72,0" />
+        <group android:name="torso_group" android:pivotX="100" android:pivotY="160">
+            <path android:fillColor="#148F86" android:pathData="M48,182 C54,150 76,138 100,138 C124,138 146,150 152,182 Z" />
+            <path android:fillColor="#F4F1E8" android:pathData="M73,160 h54 v24 h-54 Z" />
+        </group>
+        <path android:fillColor="#F2C99C" android:pathData="M66,73 C66,47 134,47 134,73 C134,120 115,132 100,132 C85,132 66,120 66,73 Z" />
+        <group android:name="hair_group" android:pivotX="100" android:pivotY="72">
+            <path android:fillColor="#F4C53B" android:pathData="M58,82 C62,40 91,21 122,27 C143,31 153,58 141,88 C134,54 116,38 98,38 C79,38 65,55 58,82 Z" />
+            <path android:fillColor="#E5B12B" android:pathData="M66,80 C54,98 51,120 70,118 C84,116 77,93 66,80 Z" />
+            <path android:fillColor="#E5B12B" android:pathData="M134,80 C146,98 149,120 130,118 C116,116 123,93 134,80 Z" />
+            <path android:fillColor="#FFE78E" android:fillAlpha="0.22" android:pathData="M83,33 C95,29 108,30 120,35 C111,35 99,38 88,43 Z" />
+            <path android:fillColor="#FFF0B6" android:fillAlpha="0.15" android:pathData="M74,53 C84,46 96,43 110,43 C99,46 90,52 82,60 Z" />
+        </group>
 
         <group android:name="eyes" android:pivotX="100" android:pivotY="89">
             <path android:fillColor="#1B5FC8" android:pathData="M83,89 m -6,0 a 6,7 0 1,0 12,0 a 6,7 0 1,0 -12,0" />
@@ -20,8 +25,8 @@
 
         <group android:name="mouth" android:pivotX="100" android:pivotY="112">
             <path
-                android:fillColor="#E76A5F"
-                android:pathData="M91,110 Q100,117 109,110 Q100,114 91,110 Z" />
+                android:fillColor="#E37469"
+                android:pathData="M92,111 Q100,117 108,111 Q100,114 92,111 Z" />
         </group>
     </group>
 </vector>
