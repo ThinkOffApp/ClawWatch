@@ -19,6 +19,8 @@ object SecurePrefs {
         "anthropic_api_key",
         "brave_api_key",
         "tavily_api_key",
+        "antfarm_api_key",
+        "antfarm_rooms",
         "model",
         "system_prompt",
         "max_tokens",

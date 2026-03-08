@@ -37,6 +37,9 @@ class ClawRunner(private val context: Context) {
         private const val PREF_RAG_MODE = "rag_mode"         // "off" | "kotlin" | "always" | "opus_tool"
         private const val PREF_BRAVE_KEY = "brave_api_key"
         private const val PREF_TAVILY_KEY = "tavily_api_key"
+        private const val PREF_ANTFARM_KEY = "antfarm_api_key"
+        private const val PREF_ANTFARM_ROOMS = "antfarm_rooms"
+        private const val DEFAULT_FAMILY_ROOMS = "thinkoff-development"
 
         // Keywords that suggest the query needs current/live information
         private val LIVE_INFO_KEYWORDS = setOf(
@@ -59,6 +62,12 @@ class ClawRunner(private val context: Context) {
     }
 
     private data class ChatTurn(val role: String, val content: String)
+    private data class FamilyMessage(
+        val room: String,
+        val from: String,
+        val body: String,
+        val createdAt: String
+    )
 
     private val filesDir get() = context.filesDir
     private val homeDir get() = context.filesDir.parentFile!!
@@ -79,6 +88,8 @@ class ClawRunner(private val context: Context) {
     fun saveApiKey(key: String) = prefs.edit().putString(PREF_API_KEY, key).apply()
     fun saveBraveKey(key: String) = prefs.edit().putString(PREF_BRAVE_KEY, key).apply()
     fun saveTavilyKey(key: String) = prefs.edit().putString(PREF_TAVILY_KEY, key).apply()
+    fun saveAntFarmKey(key: String) = prefs.edit().putString(PREF_ANTFARM_KEY, key).apply()
+    fun saveAntFarmRooms(rooms: String) = prefs.edit().putString(PREF_ANTFARM_ROOMS, rooms).apply()
     fun saveModel(model: String) = prefs.edit().putString(PREF_MODEL, model).apply()
     fun saveSystemPrompt(prompt: String) = prefs.edit().putString(PREF_SYSTEM_PROMPT, prompt).apply()
     fun saveMaxTokens(n: Int) = prefs.edit().putInt(PREF_MAX_TOKENS, n).apply()
@@ -88,6 +99,12 @@ class ClawRunner(private val context: Context) {
     private fun getApiKey(): String? = prefs.getString(PREF_API_KEY, null)
     private fun getBraveKey(): String? = prefs.getString(PREF_BRAVE_KEY, null)
     private fun getTavilyKey(): String? = prefs.getString(PREF_TAVILY_KEY, null)
+    private fun getAntFarmKey(): String? = prefs.getString(PREF_ANTFARM_KEY, null)
+    private fun getAntFarmRooms(): List<String> =
+        (prefs.getString(PREF_ANTFARM_ROOMS, DEFAULT_FAMILY_ROOMS) ?: DEFAULT_FAMILY_ROOMS)
+            .split(',')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
     private fun getModel(): String = prefs.getString(PREF_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL
     private fun getSystemPrompt(): String = prefs.getString(PREF_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT) ?: DEFAULT_SYSTEM_PROMPT
     private fun getMaxTokens(): Int = prefs.getInt(PREF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
@@ -371,6 +388,45 @@ class ClawRunner(private val context: Context) {
         }
     }
 
+    suspend fun summarizeFamilyStatus(): Result<String> = withContext(Dispatchers.IO) {
+        val antFarmKey = getAntFarmKey()
+            ?: return@withContext Result.success(
+                "I don't have family room access configured yet."
+            )
+        val rooms = getAntFarmRooms()
+        val recentMessages = fetchRecentFamilyMessages(rooms, antFarmKey)
+        if (recentMessages.isEmpty()) {
+            return@withContext Result.success(
+                "I couldn't find any recent family updates in ${rooms.joinToString(", ")}."
+            )
+        }
+
+        val apiKey = getApiKey()
+            ?: return@withContext Result.success(buildFallbackFamilySummary(recentMessages))
+
+        val transcript = recentMessages.joinToString("\n") { message ->
+            "[${message.room}] ${message.createdAt} ${message.from}: ${message.body}"
+        }
+        val prompt = buildString {
+            append("Summarize what is going on with the family based on these recent room updates.\n")
+            append("Keep it to 1 or 2 spoken sentences. Mention the most important current activity, blocker, or mood.\n")
+            append("If the updates are mixed, say that briefly.\n\n")
+            append(transcript)
+        }
+
+        val result = callAnthropicMessages(
+            apiKey = apiKey,
+            model = getModel(),
+            maxTokens = 120,
+            systemPrompt = "You summarize recent family/team room activity for a smartwatch. Be concrete, calm, and truthful. No lists.",
+            userMessage = prompt
+        )
+        result.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { Result.success(buildFallbackFamilySummary(recentMessages)) }
+        )
+    }
+
     // ── Mode 1: Direct (no RAG) ───────────────────────────────────────────────
 
     private suspend fun queryDirect(prompt: String, apiKey: String): Result<String> =
@@ -383,6 +439,69 @@ class ClawRunner(private val context: Context) {
                 userMessage = prompt
             )
         }
+
+    private fun fetchRecentFamilyMessages(
+        rooms: List<String>,
+        apiKey: String
+    ): List<FamilyMessage> {
+        return rooms.flatMap { room ->
+            fetchRoomMessages(room, apiKey)
+        }
+            .sortedByDescending { it.createdAt }
+            .take(10)
+    }
+
+    private fun fetchRoomMessages(room: String, apiKey: String): List<FamilyMessage> {
+        return try {
+            val encodedRoom = URLEncoder.encode(room, "UTF-8")
+            val url = URL("https://antfarm.world/api/v1/rooms/$encodedRoom/messages?limit=6")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Accept", "application/json")
+            conn.setRequestProperty("X-API-Key", apiKey)
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+
+            if (conn.responseCode != 200) {
+                Log.w(TAG, "Ant Farm room fetch failed for $room: ${conn.responseCode}")
+                return emptyList()
+            }
+
+            val json = JSONObject(readResponseBody(conn))
+            val messages = json.optJSONArray("messages") ?: JSONArray()
+            buildList {
+                for (i in 0 until messages.length()) {
+                    val item = messages.optJSONObject(i) ?: continue
+                    val body = item.optString("body", "")
+                        .replace(Regex("\\s+"), " ")
+                        .trim()
+                    if (body.isBlank()) continue
+                    val from = item.optString("from").ifBlank {
+                        item.optJSONObject("from_agent")?.optString("handle", "")?.takeIf { it.isNotBlank() }
+                            ?: "someone"
+                    }
+                    add(
+                        FamilyMessage(
+                            room = room,
+                            from = from,
+                            body = body.take(220),
+                            createdAt = item.optString("created_at", "")
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Ant Farm fetch failed for $room: ${e.message}")
+            emptyList()
+        }
+    }
+
+    private fun buildFallbackFamilySummary(messages: List<FamilyMessage>): String {
+        val latest = messages.firstOrNull()
+            ?: return "I couldn't find any recent family updates."
+        return "Latest family activity is in ${latest.room}. ${latest.from} said: ${latest.body}"
+            .take(220)
+    }
 
     // ── Mode 2: Kotlin RAG — pre-search + inject ──────────────────────────────
 

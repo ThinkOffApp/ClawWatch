@@ -67,13 +67,13 @@ class MainActivity : AppCompatActivity() {
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private enum class AvatarType { ANT, LOBSTER, ORANGE_LOBSTER, ROBOT, BOY, GIRL }
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
-    private enum class VitalsCommandType { SNAPSHOT, HEART_RATE }
+    private enum class LocalCommandType { VITALS_SNAPSHOT, HEART_RATE, FAMILY_STATUS }
     private data class TimerCommand(
         val totalSeconds: Int,
         val spokenDuration: String
     )
     private data class PendingVitalsCommand(
-        val type: VitalsCommandType,
+        val type: LocalCommandType,
         val token: Int
     )
     private lateinit var gestureDetector: GestureDetector
@@ -416,18 +416,22 @@ class MainActivity : AppCompatActivity() {
             launchVitalsCommand(command, token)
             return true
         }
+        if (isFamilyStatusCommand(prompt)) {
+            launchFamilyStatusCommand(token)
+            return true
+        }
         val timer = parseTimerCommand(prompt) ?: return false
         return launchSystemTimer(timer, token)
     }
 
-    private fun parseVitalsCommand(prompt: String): VitalsCommandType? {
+    private fun parseVitalsCommand(prompt: String): LocalCommandType? {
         val normalized = prompt.lowercase()
         if (
             normalized.contains("pulse") ||
             normalized.contains("heart rate") ||
             normalized.contains("heartbeat")
         ) {
-            return VitalsCommandType.HEART_RATE
+            return LocalCommandType.HEART_RATE
         }
         if (
             normalized.contains("check my vitals") ||
@@ -435,9 +439,21 @@ class MainActivity : AppCompatActivity() {
             normalized.contains("my vitals") ||
             normalized.contains("how am i doing")
         ) {
-            return VitalsCommandType.SNAPSHOT
+            return LocalCommandType.VITALS_SNAPSHOT
         }
         return null
+    }
+
+    private fun isFamilyStatusCommand(prompt: String): Boolean {
+        val normalized = prompt.lowercase()
+        if (!normalized.contains("family")) return false
+        return normalized.contains("going on") ||
+            normalized.contains("what's") ||
+            normalized.contains("what is") ||
+            normalized.contains("how's") ||
+            normalized.contains("how is") ||
+            normalized.contains("status") ||
+            normalized.contains("update")
     }
 
     private fun parseTimerCommand(prompt: String): TimerCommand? {
@@ -534,7 +550,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun launchVitalsCommand(command: VitalsCommandType, token: Int) {
+    private fun launchVitalsCommand(command: LocalCommandType, token: Int) {
         val missing = requiredVitalsPermissions(command)
         if (missing.isNotEmpty()) {
             pendingVitalsCommand = PendingVitalsCommand(command, token)
@@ -544,14 +560,14 @@ class MainActivity : AppCompatActivity() {
         runVitalsCommand(command, token)
     }
 
-    private fun requiredVitalsPermissions(command: VitalsCommandType): List<String> {
+    private fun requiredVitalsPermissions(command: LocalCommandType): List<String> {
         val permissions = mutableListOf<String>()
-        if (command == VitalsCommandType.HEART_RATE || command == VitalsCommandType.SNAPSHOT) {
+        if (command == LocalCommandType.HEART_RATE || command == LocalCommandType.VITALS_SNAPSHOT) {
             if (!hasPermission(PERMISSION_HEART_RATE)) {
                 permissions += PERMISSION_HEART_RATE
             }
         }
-        if (command == VitalsCommandType.SNAPSHOT && !hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
+        if (command == LocalCommandType.VITALS_SNAPSHOT && !hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
             permissions += Manifest.permission.ACTIVITY_RECOGNITION
         }
         return permissions
@@ -560,10 +576,10 @@ class MainActivity : AppCompatActivity() {
     private fun hasPermission(permission: String): Boolean =
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
-    private fun runVitalsCommand(command: VitalsCommandType, token: Int) {
+    private fun runVitalsCommand(command: LocalCommandType, token: Int) {
         val canReadHeartRate = hasPermission(PERMISSION_HEART_RATE)
         val canReadSteps = hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)
-        if (command == VitalsCommandType.HEART_RATE && !canReadHeartRate) {
+        if (command == LocalCommandType.HEART_RATE && !canReadHeartRate) {
             speakLocalResponse("I need heart-rate permission before I can read your pulse.", token)
             return
         }
@@ -580,8 +596,24 @@ class MainActivity : AppCompatActivity() {
             if (token != interactionToken) return@launch
 
             val response = when (command) {
-                VitalsCommandType.SNAPSHOT -> buildVitalsSummary(snapshot, canReadHeartRate, canReadSteps)
-                VitalsCommandType.HEART_RATE -> buildHeartRateSummary(snapshot)
+                LocalCommandType.VITALS_SNAPSHOT -> buildVitalsSummary(snapshot, canReadHeartRate, canReadSteps)
+                LocalCommandType.HEART_RATE -> buildHeartRateSummary(snapshot)
+                LocalCommandType.FAMILY_STATUS -> "I couldn't check the family yet."
+            }
+            binding.responseText.text = response
+            speakLocalResponse(response, token)
+        }
+    }
+
+    private fun launchFamilyStatusCommand(token: Int) {
+        queryJob?.cancel()
+        setState(State.THINKING)
+        setStatus("Checking the family…")
+        queryJob = lifecycleScope.launch {
+            val result = clawRunner.summarizeFamilyStatus()
+            if (token != interactionToken) return@launch
+            val response = result.getOrElse {
+                "I couldn't check the family right now."
             }
             binding.responseText.text = response
             speakLocalResponse(response, token)
