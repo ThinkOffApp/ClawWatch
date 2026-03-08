@@ -14,4 +14,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ClawWatch"
 include(":app")
-include(":phone")
