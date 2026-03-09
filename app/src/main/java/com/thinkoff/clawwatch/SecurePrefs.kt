@@ -53,8 +53,8 @@ object SecurePrefs {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                 )
             } catch (e: Exception) {
-                Log.w(TAG, "EncryptedSharedPreferences unavailable, falling back to plaintext", e)
-                appContext.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+                Log.e(TAG, "EncryptedSharedPreferences unavailable; refusing plaintext secret storage", e)
+                throw IllegalStateException("Encrypted storage unavailable on this device", e)
             }
 
             migrateLegacyIfPresent(appContext, secure)
