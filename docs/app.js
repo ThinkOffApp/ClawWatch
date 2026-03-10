@@ -12,6 +12,7 @@ const watchModelInputs = Array.from(document.querySelectorAll('input[name="watch
 const feedbackInput = document.getElementById('preregister-feedback');
 const PREREG_DRAFT_KEY = 'clawwatch-preregister-draft';
 const PREREG_PENDING_KEY = 'clawwatch-preregister-pending';
+const XFOR_AUTH_CALLBACK_URL = 'https://xfor.bot/auth/callback';
 
 let supabaseClient = null;
 let hasShownThankYou = false;
@@ -94,6 +95,17 @@ function hasPendingPreregistration() {
   } catch {
     return false;
   }
+}
+
+function buildSharedAuthRedirectUrl() {
+  const { watchModels, feedback } = getFormState();
+  const params = new URLSearchParams({
+    clawwatch_preregister: '1',
+    return_to: `${window.location.origin}${window.location.pathname}?preregister=complete#preregister`,
+    watch_models: watchModels.join(','),
+    feedback
+  });
+  return `${XFOR_AUTH_CALLBACK_URL}?${params.toString()}`;
 }
 
 function applyFormState(metadata = {}) {
@@ -219,7 +231,7 @@ async function startGoogleSignIn() {
   saveDraftState();
   setPendingPreregistration(true);
 
-  const redirectTo = `${window.location.origin}${window.location.pathname}?preregister=complete#preregister`;
+  const redirectTo = buildSharedAuthRedirectUrl();
   const { data, error } = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -303,6 +315,15 @@ async function init() {
     } else {
       renderRegistered(data.session.user);
     }
+  } else if (preregComplete) {
+    if (savedDraft) {
+      applyDraftState(savedDraft);
+    }
+    clearDraftState();
+    setPendingPreregistration(false);
+    renderSignedOut();
+    setBanner("Thank you for your interest! We'll be back when the easy-to-install ClawWatch is here.", 'success');
+    showThankYouModal();
   } else {
     renderSignedOut();
   }
