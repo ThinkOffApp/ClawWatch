@@ -10,6 +10,8 @@ const preregisterModal = document.getElementById('preregister-modal');
 const preregisterModalClose = document.getElementById('preregister-modal-close');
 const watchModelInputs = Array.from(document.querySelectorAll('input[name="watch-model"]'));
 const feedbackInput = document.getElementById('preregister-feedback');
+const PREREG_DRAFT_KEY = 'clawwatch-preregister-draft';
+const PREREG_PENDING_KEY = 'clawwatch-preregister-pending';
 
 let supabaseClient = null;
 let hasShownThankYou = false;
@@ -54,6 +56,46 @@ function getFormState() {
   };
 }
 
+function saveDraftState() {
+  try {
+    window.localStorage.setItem(PREREG_DRAFT_KEY, JSON.stringify(getFormState()));
+  } catch {}
+}
+
+function loadDraftState() {
+  try {
+    const raw = window.localStorage.getItem(PREREG_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function clearDraftState() {
+  try {
+    window.localStorage.removeItem(PREREG_DRAFT_KEY);
+  } catch {}
+}
+
+function setPendingPreregistration(isPending) {
+  try {
+    if (isPending) {
+      window.localStorage.setItem(PREREG_PENDING_KEY, '1');
+    } else {
+      window.localStorage.removeItem(PREREG_PENDING_KEY);
+    }
+  } catch {}
+}
+
+function hasPendingPreregistration() {
+  try {
+    return window.localStorage.getItem(PREREG_PENDING_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 function applyFormState(metadata = {}) {
   const selected = Array.isArray(metadata.clawwatch_watch_models) ? metadata.clawwatch_watch_models : [];
   const selectedSet = new Set(selected);
@@ -62,6 +104,17 @@ function applyFormState(metadata = {}) {
   });
   if (feedbackInput) {
     feedbackInput.value = typeof metadata.clawwatch_feedback === 'string' ? metadata.clawwatch_feedback : '';
+  }
+}
+
+function applyDraftState(draft = {}) {
+  const selected = Array.isArray(draft.watchModels) ? draft.watchModels : [];
+  const selectedSet = new Set(selected);
+  watchModelInputs.forEach((input) => {
+    input.checked = selectedSet.has(input.value);
+  });
+  if (feedbackInput) {
+    feedbackInput.value = typeof draft.feedback === 'string' ? draft.feedback : '';
   }
 }
 
@@ -148,6 +201,8 @@ async function ensureInterest(user, { showModal = false, forceUpdate = false } =
 
   track('clawwatch_preregister_complete');
   applyFormState(data.user?.user_metadata || metadata);
+  clearDraftState();
+  setPendingPreregistration(false);
   renderRegistered(data.user || user);
   if (showModal) {
     showThankYouModal();
@@ -161,12 +216,13 @@ async function startGoogleSignIn() {
   clearBanner();
   renderBusy('Redirecting to Google sign-in…');
   track('clawwatch_preregister_start');
+  saveDraftState();
+  setPendingPreregistration(true);
 
   const redirectTo = `${window.location.origin}${window.location.pathname}?preregister=complete#preregister`;
   const { data, error } = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      skipBrowserRedirect: true,
       redirectTo,
       queryParams: {
         prompt: 'select_account',
@@ -176,36 +232,11 @@ async function startGoogleSignIn() {
   });
 
   if (error) {
+    setPendingPreregistration(false);
     renderSignedOut();
     setBanner(error.message, 'error');
     return;
   }
-
-  const authUrl = data?.url;
-  if (!authUrl) {
-    renderSignedOut();
-    setBanner('Google sign-in could not be started.', 'error');
-    return;
-  }
-
-  const popup = window.open(authUrl, 'clawwatch-preregister', 'popup=yes,width=520,height=720');
-  if (!popup) {
-    renderSignedOut();
-    setBanner('Please allow popups for ClawWatch sign-in.', 'error');
-    return;
-  }
-
-  const poll = window.setInterval(async () => {
-    if (!popup || popup.closed) {
-      window.clearInterval(poll);
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      if (sessionData.session?.user) {
-        await ensureInterest(sessionData.session.user, { showModal: true });
-      } else {
-        renderSignedOut();
-      }
-    }
-  }, 500);
 }
 
 async function handlePreregisterAction() {
@@ -245,15 +276,10 @@ async function init() {
       closeThankYouModal();
     }
   });
-
-  window.addEventListener('message', async (event) => {
-    if (event.origin !== window.location.origin) return;
-    if (event.data?.type !== 'clawwatch-preregister-complete') return;
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    if (sessionData.session?.user) {
-      await ensureInterest(sessionData.session.user, { showModal: true });
-    }
-  });
+  const savedDraft = loadDraftState();
+  if (savedDraft) {
+    applyDraftState(savedDraft);
+  }
 
   const { data, error } = await supabaseClient.auth.getSession();
   if (error) {
@@ -262,14 +288,21 @@ async function init() {
   }
 
   const preregComplete = new URLSearchParams(window.location.search).get('preregister') === 'complete';
-
-  if (preregComplete && window.opener) {
-    window.opener.postMessage({ type: 'clawwatch-preregister-complete' }, window.location.origin);
-  }
+  const pendingPreregistration = hasPendingPreregistration();
 
   if (data.session?.user) {
     applyFormState(data.session.user.user_metadata || {});
-    await ensureInterest(data.session.user, { showModal: preregComplete });
+    if (preregComplete || pendingPreregistration) {
+      if (savedDraft) {
+        applyDraftState(savedDraft);
+      }
+      await ensureInterest(data.session.user, {
+        showModal: true,
+        forceUpdate: true
+      });
+    } else {
+      renderRegistered(data.session.user);
+    }
   } else {
     renderSignedOut();
   }
@@ -277,15 +310,18 @@ async function init() {
   if (preregComplete) {
     const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash || ''}`;
     window.history.replaceState({}, document.title, cleanUrl);
-    if (window.opener) {
-      window.setTimeout(() => window.close(), 120);
-    }
   }
 
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
       applyFormState(session.user.user_metadata || {});
-      await ensureInterest(session.user, { showModal: true });
+      if (hasPendingPreregistration()) {
+        const draft = loadDraftState();
+        if (draft) {
+          applyDraftState(draft);
+        }
+      }
+      await ensureInterest(session.user, { showModal: true, forceUpdate: hasPendingPreregistration() });
       return;
     }
 
