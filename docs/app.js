@@ -6,8 +6,24 @@ const signOutButton = document.getElementById('google-signout-button');
 const statusText = document.getElementById('preregister-status');
 const resultBanner = document.getElementById('preregister-result');
 const preregisterSection = document.getElementById('preregister');
+const preregisterModal = document.getElementById('preregister-modal');
+const preregisterModalClose = document.getElementById('preregister-modal-close');
 
 let supabaseClient = null;
+let hasShownThankYou = false;
+
+function showThankYouModal() {
+  if (!preregisterModal || hasShownThankYou) return;
+  hasShownThankYou = true;
+  preregisterModal.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeThankYouModal() {
+  if (!preregisterModal) return;
+  preregisterModal.hidden = true;
+  document.body.style.overflow = '';
+}
 
 function track(eventName, params = {}) {
   if (typeof window.gtag === 'function') {
@@ -69,13 +85,16 @@ function renderRegistered(user) {
   if (signOutButton) {
     signOutButton.hidden = false;
   }
-  setBanner('Interest saved. We will contact you when the install-ready release opens.', 'success');
+  setBanner("Thank you for your interest! We'll be back when the easy-to-install ClawWatch is here.", 'success');
 }
 
-async function ensureInterest(user) {
+async function ensureInterest(user, { showModal = false } = {}) {
   const metadata = user.user_metadata || {};
   if (metadata.clawwatch_interest_at) {
     renderRegistered(user);
+    if (showModal) {
+      showThankYouModal();
+    }
     return;
   }
 
@@ -104,6 +123,9 @@ async function ensureInterest(user) {
 
   track('clawwatch_preregister_complete');
   renderRegistered(data.user || user);
+  if (showModal) {
+    showThankYouModal();
+  }
   if (window.location.hash === '#preregister') {
     preregisterSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -114,10 +136,11 @@ async function startGoogleSignIn() {
   renderBusy('Redirecting to Google sign-in…');
   track('clawwatch_preregister_start');
 
-  const redirectTo = `${window.location.origin}${window.location.pathname}#preregister`;
-  const { error } = await supabaseClient.auth.signInWithOAuth({
+  const redirectTo = `${window.location.origin}${window.location.pathname}?preregister=complete#preregister`;
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
     options: {
+      skipBrowserRedirect: true,
       redirectTo,
       queryParams: {
         prompt: 'select_account',
@@ -129,7 +152,34 @@ async function startGoogleSignIn() {
   if (error) {
     renderSignedOut();
     setBanner(error.message, 'error');
+    return;
   }
+
+  const authUrl = data?.url;
+  if (!authUrl) {
+    renderSignedOut();
+    setBanner('Google sign-in could not be started.', 'error');
+    return;
+  }
+
+  const popup = window.open(authUrl, 'clawwatch-preregister', 'popup=yes,width=520,height=720');
+  if (!popup) {
+    renderSignedOut();
+    setBanner('Please allow popups for ClawWatch sign-in.', 'error');
+    return;
+  }
+
+  const poll = window.setInterval(async () => {
+    if (!popup || popup.closed) {
+      window.clearInterval(poll);
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      if (sessionData.session?.user) {
+        await ensureInterest(sessionData.session.user, { showModal: true });
+      } else {
+        renderSignedOut();
+      }
+    }
+  }, 500);
 }
 
 async function signOut() {
@@ -154,6 +204,21 @@ async function init() {
 
   preregisterButton?.addEventListener('click', startGoogleSignIn);
   signOutButton?.addEventListener('click', signOut);
+  preregisterModalClose?.addEventListener('click', closeThankYouModal);
+  preregisterModal?.addEventListener('click', (event) => {
+    if (event.target?.dataset?.closeModal === 'true') {
+      closeThankYouModal();
+    }
+  });
+
+  window.addEventListener('message', async (event) => {
+    if (event.origin !== window.location.origin) return;
+    if (event.data?.type !== 'clawwatch-preregister-complete') return;
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    if (sessionData.session?.user) {
+      await ensureInterest(sessionData.session.user, { showModal: true });
+    }
+  });
 
   const { data, error } = await supabaseClient.auth.getSession();
   if (error) {
@@ -161,15 +226,29 @@ async function init() {
     return;
   }
 
+  const preregComplete = new URLSearchParams(window.location.search).get('preregister') === 'complete';
+
+  if (preregComplete && window.opener) {
+    window.opener.postMessage({ type: 'clawwatch-preregister-complete' }, window.location.origin);
+  }
+
   if (data.session?.user) {
-    await ensureInterest(data.session.user);
+    await ensureInterest(data.session.user, { showModal: preregComplete });
   } else {
     renderSignedOut();
   }
 
+  if (preregComplete) {
+    const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash || ''}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+    if (window.opener) {
+      window.setTimeout(() => window.close(), 120);
+    }
+  }
+
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
-      await ensureInterest(session.user);
+      await ensureInterest(session.user, { showModal: true });
       return;
     }
 

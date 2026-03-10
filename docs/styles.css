@@ -594,6 +594,50 @@ body.clawwatch-body {
   font-size: 0.95rem;
 }
 
+.modal-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 7, 15, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 460px);
+  padding: 28px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(14, 18, 30, 0.98), rgba(10, 12, 22, 0.98));
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.42);
+  text-align: center;
+}
+
+.modal-card h2 {
+  margin: 0 0 10px;
+  font-size: 1.8rem;
+  letter-spacing: -0.03em;
+}
+
+.modal-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.modal-close-button {
+  margin-top: 20px;
+  width: 100%;
+}
+
 @keyframes heroBreathe {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-4px) scale(1.024); }
