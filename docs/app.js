@@ -1,20 +1,16 @@
-const SUPABASE_URL = 'https://kvezyhwbkvpyndkaemsw.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_MWtbxI1_Gm_yYTSxHofq2Q_z0nGwItH';
-
 const preregisterButton = document.getElementById('google-preregister-button');
 const signOutButton = document.getElementById('google-signout-button');
 const statusText = document.getElementById('preregister-status');
 const resultBanner = document.getElementById('preregister-result');
-const preregisterSection = document.getElementById('preregister');
 const preregisterModal = document.getElementById('preregister-modal');
 const preregisterModalClose = document.getElementById('preregister-modal-close');
 const watchModelInputs = Array.from(document.querySelectorAll('input[name="watch-model"]'));
 const feedbackInput = document.getElementById('preregister-feedback');
+
 const PREREG_DRAFT_KEY = 'clawwatch-preregister-draft';
 const PREREG_PENDING_KEY = 'clawwatch-preregister-pending';
 const XFOR_PREREGISTER_START_URL = 'https://xfor.bot/api/v1/clawwatch/start';
 
-let supabaseClient = null;
 let hasShownThankYou = false;
 
 function showThankYouModal() {
@@ -53,7 +49,7 @@ function clearBanner() {
 function getFormState() {
   return {
     watchModels: watchModelInputs.filter((input) => input.checked).map((input) => input.value),
-    feedback: feedbackInput?.value.trim() || ''
+    feedback: feedbackInput?.value.trim() || '',
   };
 }
 
@@ -89,35 +85,6 @@ function setPendingPreregistration(isPending) {
   } catch {}
 }
 
-function hasPendingPreregistration() {
-  try {
-    return window.localStorage.getItem(PREREG_PENDING_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function buildSharedAuthRedirectUrl() {
-  const { watchModels, feedback } = getFormState();
-  const params = new URLSearchParams({
-    return_to: `${window.location.origin}${window.location.pathname}?preregister=complete#preregister`,
-    watch_models: watchModels.join(','),
-    feedback
-  });
-  return `${XFOR_PREREGISTER_START_URL}?${params.toString()}`;
-}
-
-function applyFormState(metadata = {}) {
-  const selected = Array.isArray(metadata.clawwatch_watch_models) ? metadata.clawwatch_watch_models : [];
-  const selectedSet = new Set(selected);
-  watchModelInputs.forEach((input) => {
-    input.checked = selectedSet.has(input.value);
-  });
-  if (feedbackInput) {
-    feedbackInput.value = typeof metadata.clawwatch_feedback === 'string' ? metadata.clawwatch_feedback : '';
-  }
-}
-
 function applyDraftState(draft = {}) {
   const selected = Array.isArray(draft.watchModels) ? draft.watchModels : [];
   const selectedSet = new Set(selected);
@@ -129,7 +96,7 @@ function applyDraftState(draft = {}) {
   }
 }
 
-function renderSignedOut() {
+function renderReady() {
   clearBanner();
   if (statusText) {
     statusText.textContent = 'Sign in with Google and we will mark your account for the future install-ready ClawWatch release.';
@@ -157,39 +124,17 @@ function renderBusy(message) {
   }
 }
 
-function renderRegistered(user) {
-  const email = user.email || 'your Google account';
-  if (statusText) {
-    statusText.textContent = `You are registered for ClawWatch install updates as ${email}. You can update your watch details below any time.`;
-  }
-  if (preregisterButton) {
-    preregisterButton.disabled = false;
-    preregisterButton.innerHTML = '<span class="google-mark">✓</span><span>Update my interest details</span>';
-  }
-  if (signOutButton) {
-    signOutButton.hidden = false;
-  }
-  setBanner("Thank you for your interest! We'll be back when the easy-to-install ClawWatch is here.", 'success');
+function buildSharedAuthRedirectUrl() {
+  const { watchModels, feedback } = getFormState();
+  const params = new URLSearchParams({
+    return_to: `${window.location.origin}${window.location.pathname}?preregister=complete#preregister`,
+    watch_models: watchModels.join(','),
+    feedback,
+  });
+  return `${XFOR_PREREGISTER_START_URL}?${params.toString()}`;
 }
 
-async function ensureInterest(user, { showModal = false, forceUpdate = false } = {}) {
-  const metadata = user.user_metadata || {};
-  if (metadata.clawwatch_interest_at && !forceUpdate) {
-    applyFormState(metadata);
-    renderRegistered(user);
-    if (showModal) {
-      showThankYouModal();
-    }
-    return;
-  }
-  renderRegistered(user);
-  if (showModal) {
-    showThankYouModal();
-  }
-}
-
-async function startGoogleSignIn() {
-  clearBanner();
+function startGoogleSignIn() {
   renderBusy('Redirecting to Google sign-in…');
   track('clawwatch_preregister_start');
   saveDraftState();
@@ -197,108 +142,44 @@ async function startGoogleSignIn() {
   window.location.assign(buildSharedAuthRedirectUrl());
 }
 
-async function handlePreregisterAction() {
-  const { data } = await supabaseClient.auth.getSession();
-  if (data.session?.user) {
-    await ensureInterest(data.session.user, { showModal: true, forceUpdate: true });
-    return;
-  }
-  await startGoogleSignIn();
-}
-
-async function signOut() {
-  const { error } = await supabaseClient.auth.signOut();
-  if (error) {
-    setBanner(error.message, 'error');
-    return;
-  }
-  renderSignedOut();
-}
-
-async function init() {
-  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      persistSession: true,
-      flowType: 'pkce'
-    }
-  });
-
-  preregisterButton?.addEventListener('click', handlePreregisterAction);
-  signOutButton?.addEventListener('click', signOut);
+function init() {
+  preregisterButton?.addEventListener('click', startGoogleSignIn);
   preregisterModalClose?.addEventListener('click', closeThankYouModal);
   preregisterModal?.addEventListener('click', (event) => {
     if (event.target?.dataset?.closeModal === 'true') {
       closeThankYouModal();
     }
   });
+
   const savedDraft = loadDraftState();
   if (savedDraft) {
     applyDraftState(savedDraft);
   }
 
-  const { data, error } = await supabaseClient.auth.getSession();
-  if (error) {
-    setBanner(error.message, 'error');
-    return;
-  }
+  const url = new URL(window.location.href);
+  const preregStatus = url.searchParams.get('preregister');
 
-  const preregComplete = new URLSearchParams(window.location.search).get('preregister') === 'complete';
-  const pendingPreregistration = hasPendingPreregistration();
-
-  if (data.session?.user) {
-    applyFormState(data.session.user.user_metadata || {});
-    if (preregComplete || pendingPreregistration) {
-      if (savedDraft) {
-        applyDraftState(savedDraft);
-      }
-      await ensureInterest(data.session.user, {
-        showModal: true,
-        forceUpdate: true
-      });
-    } else {
-      renderRegistered(data.session.user);
-    }
-  } else if (preregComplete) {
+  if (preregStatus === 'complete') {
     if (savedDraft) {
       applyDraftState(savedDraft);
     }
     clearDraftState();
     setPendingPreregistration(false);
-    renderSignedOut();
+    renderReady();
     setBanner("Thank you for your interest! We'll be back when the easy-to-install ClawWatch is here.", 'success');
     showThankYouModal();
+  } else if (preregStatus === 'error') {
+    renderReady();
+    setPendingPreregistration(false);
+    setBanner('Google sign-in finished, but ClawWatch preregistration was not stored. Please try again.', 'error');
   } else {
-    renderSignedOut();
+    renderReady();
   }
 
-  if (preregComplete) {
+  if (preregStatus) {
     const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash || ''}`;
     window.history.replaceState({}, document.title, cleanUrl);
   }
-
-  supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-      applyFormState(session.user.user_metadata || {});
-      if (hasPendingPreregistration()) {
-        const draft = loadDraftState();
-        if (draft) {
-          applyDraftState(draft);
-        }
-      }
-      await ensureInterest(session.user, { showModal: true, forceUpdate: hasPendingPreregistration() });
-      return;
-    }
-
-    if (event === 'SIGNED_OUT') {
-      renderSignedOut();
-    }
-  });
 }
 
-init().catch((error) => {
-  renderSignedOut();
-  setBanner(error.message || 'Failed to initialize preregistration.', 'error');
-});
+init();
