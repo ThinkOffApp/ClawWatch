@@ -12,8 +12,7 @@ const watchModelInputs = Array.from(document.querySelectorAll('input[name="watch
 const feedbackInput = document.getElementById('preregister-feedback');
 const PREREG_DRAFT_KEY = 'clawwatch-preregister-draft';
 const PREREG_PENDING_KEY = 'clawwatch-preregister-pending';
-const XFOR_AUTH_CALLBACK_URL = 'https://xfor.bot/auth/callback';
-const XFOR_PREREGISTER_API_URL = 'https://xfor.bot/api/v1/clawwatch/preregister';
+const XFOR_PREREGISTER_START_URL = 'https://xfor.bot/api/v1/clawwatch/start';
 
 let supabaseClient = null;
 let hasShownThankYou = false;
@@ -101,12 +100,11 @@ function hasPendingPreregistration() {
 function buildSharedAuthRedirectUrl() {
   const { watchModels, feedback } = getFormState();
   const params = new URLSearchParams({
-    clawwatch_preregister: '1',
     return_to: `${window.location.origin}${window.location.pathname}?preregister=complete#preregister`,
     watch_models: watchModels.join(','),
     feedback
   });
-  return `${XFOR_AUTH_CALLBACK_URL}?${params.toString()}`;
+  return `${XFOR_PREREGISTER_START_URL}?${params.toString()}`;
 }
 
 function applyFormState(metadata = {}) {
@@ -184,56 +182,9 @@ async function ensureInterest(user, { showModal = false, forceUpdate = false } =
     }
     return;
   }
-
-  const { watchModels, feedback } = getFormState();
-  renderBusy(metadata.clawwatch_interest_at ? 'Updating your ClawWatch details…' : 'Saving your ClawWatch preregistration…');
-
-  const { data: sessionData } = await supabaseClient.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
-  if (!accessToken) {
-    if (statusText) {
-      statusText.textContent = 'Google sign-in worked, but the ClawWatch session is missing.';
-    }
-    if (preregisterButton) {
-      preregisterButton.disabled = false;
-      preregisterButton.innerHTML = '<span class="google-mark">G</span><span>Try Google sign-in again</span>';
-    }
-    setBanner('No access token available for preregistration.', 'error');
-    return;
-  }
-
-  const response = await fetch(XFOR_PREREGISTER_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`
-    },
-    body: JSON.stringify({ watchModels, feedback })
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload?.ok) {
-    if (statusText) {
-      statusText.textContent = 'Google sign-in worked, but saving your preregistration failed.';
-    }
-    if (preregisterButton) {
-      preregisterButton.disabled = false;
-      preregisterButton.innerHTML = '<span class="google-mark">G</span><span>Try Google sign-in again</span>';
-    }
-    setBanner(payload?.error || 'ClawWatch preregistration request failed.', 'error');
-    return;
-  }
-
-  track('clawwatch_preregister_complete');
-  applyFormState(payload.user?.user_metadata || metadata);
-  clearDraftState();
-  setPendingPreregistration(false);
-  renderRegistered(payload.user || user);
+  renderRegistered(user);
   if (showModal) {
     showThankYouModal();
-  }
-  if (window.location.hash === '#preregister') {
-    preregisterSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
@@ -243,25 +194,7 @@ async function startGoogleSignIn() {
   track('clawwatch_preregister_start');
   saveDraftState();
   setPendingPreregistration(true);
-
-  const redirectTo = buildSharedAuthRedirectUrl();
-  const { data, error } = await supabaseClient.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo,
-      queryParams: {
-        prompt: 'select_account',
-        access_type: 'offline'
-      }
-    }
-  });
-
-  if (error) {
-    setPendingPreregistration(false);
-    renderSignedOut();
-    setBanner(error.message, 'error');
-    return;
-  }
+  window.location.assign(buildSharedAuthRedirectUrl());
 }
 
 async function handlePreregisterAction() {
