@@ -3,178 +3,216 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ClawWatch</title>
-  <meta name="description" content="ClawWatch - smartwatch-native AI agent by ThinkOff">
-  <style>
-    :root {
-      --bg: #0a0d12;
-      --card: #101723;
-      --card-strong: #0f1622;
-      --text: #f3f7ff;
-      --muted: #9eb2cc;
-      --accent: #2cd9ff;
-      --accent2: #4df7b1;
-      --line: rgba(255,255,255,0.12);
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, #0f2746 0%, transparent 55%),
-        radial-gradient(1200px 700px at 90% 110%, #173023 0%, transparent 50%),
-        var(--bg);
-      padding: 24px;
-    }
-    .wrap {
-      width: min(960px, 100%);
-      margin: 0 auto;
-    }
-    .card {
-      width: min(760px, 100%);
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 28px;
-      backdrop-filter: blur(5px);
-      margin: 0 auto;
-    }
-    h1 {
-      margin: 0 0 8px;
-      font-size: clamp(34px, 6vw, 56px);
-      letter-spacing: -0.02em;
-    }
-    h2 {
-      margin: 0 0 10px;
-      font-size: clamp(24px, 4vw, 34px);
-      letter-spacing: -0.02em;
-    }
-    p {
-      margin: 0 0 22px;
-      line-height: 1.55;
-      color: var(--muted);
-      font-size: clamp(16px, 2.2vw, 20px);
-    }
-    .links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    a.button {
-      text-decoration: none;
-      color: #031014;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 999px;
-      padding: 11px 16px;
-      font-weight: 700;
-      font-size: 15px;
-    }
-    a.secondary {
-      color: var(--text);
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.25);
-    }
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid rgba(44,217,255,0.28);
-      background: rgba(44,217,255,0.08);
-      color: #b6ecff;
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      margin-bottom: 18px;
-    }
-    .hero-subtitle {
-      max-width: 680px;
-    }
-    .news-card {
-      width: min(760px, 100%);
-      margin: 18px auto 0;
-      background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02));
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 28px;
-    }
-    .news-meta {
-      color: #9fdff0;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-    .news-card p {
-      font-size: clamp(15px, 2vw, 18px);
-      margin-bottom: 16px;
-    }
-    .news-points {
-      margin: 0 0 20px;
-      padding-left: 18px;
-      color: var(--muted);
-      line-height: 1.6;
-      font-size: 16px;
-    }
-    .news-points li + li {
-      margin-top: 8px;
-    }
-    .site-note {
-      width: min(760px, 100%);
-      margin: 18px auto 0;
-      color: #91a6c2;
-      font-size: 14px;
-      line-height: 1.6;
-      text-align: center;
-    }
-    .site-note a {
-      color: #bfefff;
-    }
-    @media (max-width: 640px) {
-      body {
-        padding: 16px;
-      }
-      .card, .news-card {
-        padding: 22px;
-      }
-    }
-  </style>
+  <title>ClawWatch.app | ThinkOff.io Service</title>
+  <meta name="description" content="ClawWatch is the smartwatch-native AI agent from ThinkOff: live wrist conversation, body sensing, and connected room intelligence.">
+  <meta property="og:title" content="ClawWatch 2.0">
+  <meta property="og:description" content="The smartwatch-native AI agent that knows your body and your team.">
+  <meta property="og:image" content="https://clawwatch.app/assets/images/clawwatch/clawwatch-v2-demo-still.png">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="/styles.css">
+  <script>
+    const GA_MEASUREMENT_ID = 'G-XHQCCXDM2N';
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function gtag(){ window.dataLayer.push(arguments); };
+    const gaScript = document.createElement('script');
+    gaScript.async = true;
+    gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+    document.head.appendChild(gaScript);
+    window.gtag('js', new Date());
+    window.gtag('config', GA_MEASUREMENT_ID);
+  </script>
 </head>
-<body>
-  <div class="wrap">
-    <main class="card">
-      <div class="eyebrow">ThinkOff.io Service</div>
-      <h1>ClawWatch</h1>
-      <p class="hero-subtitle">A smartwatch-native AI agent from ThinkOff. Tap, talk, and get a response on your wrist, with live body sensing and live team context in ClawWatch 2.0.</p>
-      <div class="links">
-        <a class="button" href="https://www.thinkoff.io/news">ClawWatch 2.0 News</a>
-        <a class="button secondary" href="https://github.com/ThinkOffApp/ClawWatch/releases/tag/v2.0.0">v2.0.0 Release</a>
-        <a class="button secondary" href="https://github.com/ThinkOffApp/ClawWatch">GitHub Repository</a>
-      </div>
+<body class="clawwatch-body">
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand-mark" href="https://www.thinkoff.io/" target="_blank" rel="noopener noreferrer">
+        <span class="brand-kicker">ThinkOff.io Service</span>
+        <span class="brand-name">ClawWatch.app</span>
+      </a>
+      <nav class="top-links">
+        <a href="#latest-news">Latest news</a>
+        <a href="/news/">News archive</a>
+        <a href="https://github.com/ThinkOffApp/ClawWatch" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <div class="badge-row">
+            <span class="badge">ClawWatch 2.0</span>
+            <span class="badge badge-soft">Smartwatch-native AI agent</span>
+            <span class="badge badge-soft">ThinkOff ecosystem</span>
+          </div>
+          <h1>The watch agent that feels your pulse and knows what your team is doing.</h1>
+          <p class="hero-lead">
+            ClawWatch is a native smartwatch AI agent from ThinkOff. Talk to it directly on your wrist, check live vitals,
+            ask what is going on with your family or team, and stay connected to Ant Farm rooms and other agents through Agent Kit.
+          </p>
+          <div class="cta-row">
+            <a class="cta-primary" href="https://github.com/ThinkOffApp/ClawWatch/releases/tag/v2.0.0" target="_blank" rel="noopener noreferrer">Get ClawWatch 2.0</a>
+            <a class="cta-secondary" href="/news/">Read ClawWatch news</a>
+            <a class="cta-secondary" href="https://www.thinkoff.io/news" target="_blank" rel="noopener noreferrer">ThinkOff.io news</a>
+          </div>
+          <div class="hero-facts">
+            <div class="hero-fact">
+              <strong>Wrist-first</strong>
+              <span>Voice agent running natively on Galaxy Watch hardware.</span>
+            </div>
+            <div class="hero-fact">
+              <strong>Body-aware</strong>
+              <span>Pulse, vitals, motion, altitude, ambient state, and more.</span>
+            </div>
+            <div class="hero-fact">
+              <strong>Network-aware</strong>
+              <span>Connected to your rooms, your family, and other agents.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-media">
+          <div class="video-card">
+            <video controls preload="metadata" poster="/assets/images/clawwatch/clawwatch-v2-demo-still.png">
+              <source src="/assets/videos/clawwatch-v2-launch-compressed.mp4" type="video/mp4">
+              Your browser does not support video playback.
+            </video>
+            <p class="media-caption">ClawWatch 2.0 in action on-device. If you upload a YouTube version later, this block can be swapped to an embedded player.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="avatar-panel">
+        <div class="section-heading">
+          <span class="section-kicker">Avatar lineup</span>
+          <h2>Six live ClawWatch identities on the wrist</h2>
+          <p>The current ClawWatch 2.0 avatars are part of the product, not decoration. They are built to react to real device and agent context.</p>
+        </div>
+        <div class="avatar-grid">
+          <figure class="avatar-card">
+            <img src="/assets/images/clawwatch/ant.png" alt="ClawWatch ant avatar">
+            <figcaption>Ant</figcaption>
+          </figure>
+          <figure class="avatar-card">
+            <img src="/assets/images/clawwatch/lobster.png" alt="ClawWatch lobster avatar">
+            <figcaption>Lobster</figcaption>
+          </figure>
+          <figure class="avatar-card">
+            <img src="/assets/images/clawwatch/orange-lobster.png" alt="ClawWatch orange lobster avatar">
+            <figcaption>Orange lobster</figcaption>
+          </figure>
+          <figure class="avatar-card">
+            <img src="/assets/images/clawwatch/robot.png" alt="ClawWatch robot avatar">
+            <figcaption>Robot</figcaption>
+          </figure>
+          <figure class="avatar-card">
+            <img src="/assets/images/clawwatch/boy.png" alt="ClawWatch boy avatar">
+            <figcaption>Boy</figcaption>
+          </figure>
+          <figure class="avatar-card">
+            <img src="/assets/images/clawwatch/girl.png" alt="ClawWatch girl avatar">
+            <figcaption>Girl</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature-panel">
+        <div class="section-heading">
+          <span class="section-kicker">Why it matters</span>
+          <h2>ClawWatch combines three layers that normally live in separate products</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <h3>Real local watch actions</h3>
+            <p>Timers, pulse checks, vitals summaries, and other device-native actions can happen locally on the watch instead of pretending through a cloud chat response.</p>
+          </article>
+          <article class="feature-card">
+            <h3>Body sensing on the wrist</h3>
+            <p>ClawWatch reads watch sensors directly, so “what is my pulse?” and “check my vitals” can be grounded in the actual device state.</p>
+          </article>
+          <article class="feature-card">
+            <h3>ThinkOff room context</h3>
+            <p>Through Ant Farm and Agent Kit, the watch can summarize what your family or team has been discussing instead of living as an isolated gadget.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="latest-news" class="news-panel">
+        <div class="section-heading">
+          <span class="section-kicker">Latest news</span>
+          <h2>ClawWatch 2.0: The smartwatch agent that knows your body and your team</h2>
+          <p>Latest from ThinkOff.io, mirrored here on the ClawWatch site.</p>
+        </div>
+
+        <article class="news-article news-article-featured">
+          <div class="news-meta">2026-03-08 · ⌚🫀🤝</div>
+          <p>
+            ClawWatch 2.0 connects two things no other agent has connected before: your body and your agent network.
+            The watch reads your pulse, barometric pressure, ambient light, step count, acceleration, movement, and altitude from its own sensors,
+            while staying connected to your other agents and discussion rooms through Agent Kit.
+          </p>
+          <p>
+            Ask your wrist “what is my pulse?” and it reads the sensor directly. Ask “what is going on with the family?”
+            and it summarizes the configured Ant Farm rooms. ClawWatch is no longer an isolated watch demo. It is a real node in the ThinkOff ecosystem.
+          </p>
+          <div class="news-actions">
+            <a class="cta-primary" href="https://www.thinkoff.io/news" target="_blank" rel="noopener noreferrer">Read on ThinkOff.io</a>
+            <a class="cta-secondary" href="https://github.com/ThinkOffApp/ClawWatch/releases/tag/v2.0.0" target="_blank" rel="noopener noreferrer">View v2.0.0 release</a>
+          </div>
+        </article>
+      </section>
+
+      <section class="news-archive-panel">
+        <div class="section-heading">
+          <span class="section-kicker">ClawWatch news</span>
+          <h2>All ClawWatch items from ThinkOff.io</h2>
+        </div>
+
+        <div class="news-card-grid">
+          <article class="news-card">
+            <div class="news-meta">2026-03-08 · ClawWatch 2.0</div>
+            <h3>ClawWatch 2.0: The Smartwatch Agent That Knows Your Body and Your Team</h3>
+            <p>Vector avatars, live vitals, family and team summaries, local command routing, and the Agent Kit connection layer all land together in 2.0.</p>
+            <div class="news-actions">
+              <a class="cta-secondary" href="https://www.thinkoff.io/news" target="_blank" rel="noopener noreferrer">ThinkOff.io article</a>
+              <a class="cta-secondary" href="https://github.com/ThinkOffApp/ClawWatch/releases/tag/v2.0.0" target="_blank" rel="noopener noreferrer">Release</a>
+            </div>
+          </article>
+
+          <article class="news-card">
+            <div class="news-meta">2026-03-03 · ClawWatch 1.0.0</div>
+            <h3>ClawWatch 1.0.0 is Live — The First Smartwatch Native AI Agent</h3>
+            <p>The first public ClawWatch launch proved the core wrist loop: tap once, speak naturally, continue in multi-turn conversation, and stop when you stop.</p>
+            <div class="news-actions">
+              <a class="cta-secondary" href="https://www.thinkoff.io/news" target="_blank" rel="noopener noreferrer">ThinkOff.io article</a>
+              <a class="cta-secondary" href="https://github.com/ThinkOffApp/ClawWatch/releases/tag/v1.0.0" target="_blank" rel="noopener noreferrer">Release</a>
+            </div>
+          </article>
+        </div>
+
+        <div class="archive-link-row">
+          <a class="cta-secondary" href="/news/">Open ClawWatch news archive</a>
+        </div>
+      </section>
+
+      <section class="ecosystem-panel">
+        <div class="section-heading">
+          <span class="section-kicker">Part of ThinkOff</span>
+          <h2>ClawWatch.app is a ThinkOff.io service</h2>
+          <p>ClawWatch lives inside the same wider ecosystem as ThinkOff.io, Ant Farm, and Agent Kit.</p>
+        </div>
+        <div class="ecosystem-links">
+          <a href="https://www.thinkoff.io/" target="_blank" rel="noopener noreferrer">ThinkOff.io</a>
+          <a href="https://antfarm.world" target="_blank" rel="noopener noreferrer">AntFarm.world</a>
+          <a href="https://github.com/ThinkOffApp/ide-agent-kit" target="_blank" rel="noopener noreferrer">Agent Kit</a>
+          <a href="https://github.com/ThinkOffApp/ClawWatch" target="_blank" rel="noopener noreferrer">ClawWatch GitHub</a>
+        </div>
+      </section>
     </main>
 
-    <section class="news-card">
-      <div class="news-meta">Latest News · 2026-03-08</div>
-      <h2>ClawWatch 2.0: The Smartwatch Agent That Knows Your Body and Your Team</h2>
-      <p>ClawWatch 2.0 turns the watch into a small, fast embodied agent that can feel your pulse, read the watch sensors, and stay connected to your rooms and other agents through Agent Kit.</p>
-      <ul class="news-points">
-        <li>New vector avatar system for the watch face</li>
-        <li>Live on-device vitals and pulse checks</li>
-        <li>Family and team summaries from connected Ant Farm rooms</li>
-        <li>Local command routing for faster watch-native actions</li>
-      </ul>
-      <div class="links">
-        <a class="button" href="https://www.thinkoff.io/news">Read the full 2.0 news item</a>
-        <a class="button secondary" href="https://www.thinkoff.io/">ThinkOff.io</a>
-        <a class="button secondary" href="https://github.com/ThinkOffApp/ide-agent-kit">Agent Kit</a>
-      </div>
-    </section>
-
-    <p class="site-note">ClawWatch.app is a <a href="https://www.thinkoff.io/">ThinkOff.io</a> service.</p>
+    <footer class="site-footer">
+      <p>ClawWatch.app is a <a href="https://www.thinkoff.io/" target="_blank" rel="noopener noreferrer">ThinkOff.io</a> service.</p>
+      <p>© 2026 ThinkOff Ecosystem</p>
+    </footer>
   </div>
 </body>
 </html>
