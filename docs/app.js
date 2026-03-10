@@ -13,6 +13,7 @@ const feedbackInput = document.getElementById('preregister-feedback');
 const PREREG_DRAFT_KEY = 'clawwatch-preregister-draft';
 const PREREG_PENDING_KEY = 'clawwatch-preregister-pending';
 const XFOR_AUTH_CALLBACK_URL = 'https://xfor.bot/auth/callback';
+const XFOR_PREREGISTER_API_URL = 'https://xfor.bot/api/v1/clawwatch/preregister';
 
 let supabaseClient = null;
 let hasShownThankYou = false;
@@ -187,19 +188,31 @@ async function ensureInterest(user, { showModal = false, forceUpdate = false } =
   const { watchModels, feedback } = getFormState();
   renderBusy(metadata.clawwatch_interest_at ? 'Updating your ClawWatch details…' : 'Saving your ClawWatch preregistration…');
 
-  const { data, error } = await supabaseClient.auth.updateUser({
-    data: {
-      clawwatch_interest: true,
-      clawwatch_interest_at: metadata.clawwatch_interest_at || new Date().toISOString(),
-      clawwatch_interest_source: window.location.host,
-      clawwatch_interest_status: 'preregistered',
-      clawwatch_watch_models: watchModels,
-      clawwatch_has_watch: watchModels.length > 0 && !watchModels.includes('no-watch-yet'),
-      clawwatch_feedback: feedback
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    if (statusText) {
+      statusText.textContent = 'Google sign-in worked, but the ClawWatch session is missing.';
     }
+    if (preregisterButton) {
+      preregisterButton.disabled = false;
+      preregisterButton.innerHTML = '<span class="google-mark">G</span><span>Try Google sign-in again</span>';
+    }
+    setBanner('No access token available for preregistration.', 'error');
+    return;
+  }
+
+  const response = await fetch(XFOR_PREREGISTER_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({ watchModels, feedback })
   });
 
-  if (error) {
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.ok) {
     if (statusText) {
       statusText.textContent = 'Google sign-in worked, but saving your preregistration failed.';
     }
@@ -207,15 +220,15 @@ async function ensureInterest(user, { showModal = false, forceUpdate = false } =
       preregisterButton.disabled = false;
       preregisterButton.innerHTML = '<span class="google-mark">G</span><span>Try Google sign-in again</span>';
     }
-    setBanner(error.message, 'error');
+    setBanner(payload?.error || 'ClawWatch preregistration request failed.', 'error');
     return;
   }
 
   track('clawwatch_preregister_complete');
-  applyFormState(data.user?.user_metadata || metadata);
+  applyFormState(payload.user?.user_metadata || metadata);
   clearDraftState();
   setPendingPreregistration(false);
-  renderRegistered(data.user || user);
+  renderRegistered(payload.user || user);
   if (showModal) {
     showThankYouModal();
   }
