@@ -457,6 +457,60 @@ body.clawwatch-body {
   line-height: 1.75;
 }
 
+.preregister-form {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0 18px;
+}
+
+.preregister-fieldset {
+  margin: 0;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+}
+
+.preregister-fieldset legend,
+.preregister-feedback-label {
+  color: #eef4ff;
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+
+.preregister-fieldset legend {
+  padding: 0 8px;
+}
+
+.preregister-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--muted);
+}
+
+.preregister-check input {
+  accent-color: #f28c1b;
+}
+
+.preregister-feedback {
+  width: 100%;
+  min-height: 110px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.preregister-feedback::placeholder {
+  color: rgba(162, 172, 192, 0.78);
+}
+
 .preregister-points {
   display: flex;
   flex-wrap: wrap;
