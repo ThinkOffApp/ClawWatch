@@ -593,6 +593,10 @@ body.clawwatch-body {
   place-items: center;
 }
 
+.modal-shell[hidden] {
+  display: none !important;
+}
+
 .modal-backdrop {
   position: absolute;
   inset: 0;
