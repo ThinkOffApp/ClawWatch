@@ -147,6 +147,7 @@ body.clawwatch-body {
 }
 
 .cta-row,
+.cta-subrow,
 .news-actions,
 .ecosystem-links,
 .archive-link-row {
@@ -157,6 +158,10 @@ body.clawwatch-body {
 
 .cta-row {
   margin-top: 24px;
+}
+
+.cta-subrow {
+  margin-top: 12px;
 }
 
 .cta-primary,
@@ -181,6 +186,12 @@ body.clawwatch-body {
   color: var(--text);
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.14);
+}
+
+.cta-secondary-small {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 0.92rem;
 }
 
 .cta-primary:hover,
@@ -664,6 +675,7 @@ body.clawwatch-body {
   }
 
   .cta-row,
+  .cta-subrow,
   .news-actions,
   .ecosystem-links,
   .archive-link-row {
