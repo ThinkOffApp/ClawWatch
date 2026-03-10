@@ -220,12 +220,96 @@ body.clawwatch-body {
   align-items: stretch;
 }
 
+.hero-visual-stack {
+  width: 100%;
+  display: grid;
+  gap: 18px;
+}
+
+.avatar-stage-card,
 .video-card {
   width: 100%;
   padding: 16px;
   border-radius: 22px;
   background: linear-gradient(180deg, rgba(9, 12, 20, 0.92), rgba(14, 18, 30, 0.9));
   border: 1px solid rgba(255,255,255,0.1);
+}
+
+.avatar-stage-shell {
+  position: relative;
+  min-height: 360px;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(125, 211, 252, 0.15), transparent 30%),
+    radial-gradient(circle at 72% 24%, rgba(244, 114, 182, 0.18), transparent 28%),
+    radial-gradient(circle at 50% 70%, rgba(212, 165, 233, 0.14), transparent 38%),
+    linear-gradient(180deg, rgba(13, 18, 30, 0.98), rgba(8, 11, 20, 0.98));
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-glow {
+  position: absolute;
+  inset: auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  filter: blur(35px);
+  opacity: 0.8;
+  animation: avatarGlow 6s ease-in-out infinite;
+}
+
+.avatar-glow-cyan {
+  background: rgba(125, 211, 252, 0.26);
+  left: 18%;
+  top: 16%;
+}
+
+.avatar-glow-rose {
+  background: rgba(244, 114, 182, 0.24);
+  right: 16%;
+  bottom: 18%;
+  animation-delay: -2.2s;
+}
+
+.hero-avatar-svg {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 360px);
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.4));
+}
+
+#hero-head {
+  animation: heroBreathe 4.3s ease-in-out infinite;
+}
+
+#hero-antenna-left {
+  animation: antennaLeft 3.6s ease-in-out infinite;
+}
+
+#hero-antenna-right {
+  animation: antennaRight 3.6s ease-in-out infinite;
+}
+
+#hero-left-claw {
+  animation: clawLeft 4.8s ease-in-out infinite;
+}
+
+#hero-right-claw {
+  animation: clawRight 4.8s ease-in-out infinite;
+}
+
+#hero-mouth {
+  animation: heroMouth 4.3s ease-in-out infinite;
+}
+
+#hero-eye-glow {
+  animation: heroEyeGlow 6.5s ease-in-out infinite;
 }
 
 .video-card video {
@@ -245,6 +329,7 @@ body.clawwatch-body {
 
 .avatar-panel,
 .feature-panel,
+.preregister-panel,
 .news-panel,
 .news-archive-panel,
 .ecosystem-panel,
@@ -299,6 +384,7 @@ body.clawwatch-body {
 }
 
 .feature-grid,
+.preregister-grid,
 .news-card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -307,6 +393,8 @@ body.clawwatch-body {
 }
 
 .feature-card,
+.preregister-copy,
+.preregister-card,
 .news-card,
 .news-article {
   padding: 20px;
@@ -341,6 +429,130 @@ body.clawwatch-body {
   margin-top: 18px;
 }
 
+.preregister-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+}
+
+.preregister-copy h3,
+.preregister-card h3 {
+  margin: 0 0 10px;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.preregister-copy p,
+.preregister-card p {
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.preregister-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.preregister-points span,
+.auth-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.auth-pill {
+  margin-bottom: 14px;
+  color: var(--accent-strong);
+}
+
+.preregister-status {
+  min-height: 84px;
+}
+
+.google-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 16px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  color: #0b1020;
+  background: linear-gradient(135deg, #ffffff, #d9eef8);
+  box-shadow: 0 18px 40px rgba(125, 211, 252, 0.18);
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.google-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.google-button:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.google-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4285f4, #ea4335, #fbbc05, #34a853);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.text-link-button {
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  cursor: pointer;
+}
+
+.status-banner {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+}
+
+.status-banner[data-tone="success"] {
+  color: #d9fff1;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+.status-banner[data-tone="error"] {
+  color: #ffe3e6;
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.24);
+}
+
+.preregister-note {
+  margin-top: 16px;
+  font-size: 0.9rem;
+}
+
 .ecosystem-links {
   margin-top: 20px;
 }
@@ -362,6 +574,47 @@ body.clawwatch-body {
   font-size: 0.95rem;
 }
 
+@keyframes heroBreathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.024); }
+}
+
+@keyframes antennaLeft {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(6deg); }
+}
+
+@keyframes antennaRight {
+  0%, 100% { transform: rotate(3deg); }
+  50% { transform: rotate(-6deg); }
+}
+
+@keyframes clawLeft {
+  0%, 100% { transform: translateX(0) translateY(0) rotate(0deg); }
+  50% { transform: translateX(-4px) translateY(3px) rotate(-3deg); }
+}
+
+@keyframes clawRight {
+  0%, 100% { transform: translateX(0) translateY(0) rotate(0deg); }
+  50% { transform: translateX(4px) translateY(3px) rotate(3deg); }
+}
+
+@keyframes heroMouth {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  50% { transform: translateY(1px) scaleX(1.04); }
+}
+
+@keyframes heroEyeGlow {
+  0%, 82%, 100% { opacity: 0.18; }
+  88% { opacity: 0.55; }
+  94% { opacity: 0.24; }
+}
+
+@keyframes avatarGlow {
+  0%, 100% { transform: scale(0.92); opacity: 0.52; }
+  50% { transform: scale(1.1); opacity: 0.84; }
+}
+
 @media (max-width: 1040px) {
   .hero-panel {
     grid-template-columns: 1fr;
@@ -369,6 +622,7 @@ body.clawwatch-body {
 
   .avatar-grid,
   .feature-grid,
+  .preregister-grid,
   .news-card-grid,
   .hero-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -389,6 +643,7 @@ body.clawwatch-body {
   .hero-panel,
   .avatar-panel,
   .feature-panel,
+  .preregister-panel,
   .news-panel,
   .news-archive-panel,
   .ecosystem-panel,
@@ -402,6 +657,7 @@ body.clawwatch-body {
 
   .avatar-grid,
   .feature-grid,
+  .preregister-grid,
   .news-card-grid,
   .hero-facts {
     grid-template-columns: 1fr;
