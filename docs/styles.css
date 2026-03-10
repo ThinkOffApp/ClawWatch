@@ -51,15 +51,6 @@ body.clawwatch-body {
   color: var(--text);
 }
 
-.brand-logo {
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 16px;
-  margin-bottom: 6px;
-  box-shadow: 0 14px 32px rgba(242, 159, 28, 0.26);
-}
-
 .brand-kicker,
 .section-kicker {
   font-size: 12px;
