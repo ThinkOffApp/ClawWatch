@@ -73,6 +73,8 @@ dependencies {
 
     // Wearable Data Layer — receive config from phone companion app
     implementation(libs.play.services.wearable)
+    // Wear OS push notifications (Phase A server-initiated alerts)
+    implementation(libs.firebase.messaging)
     // Encrypted key/config storage on watch
     implementation(libs.security.crypto)
 }

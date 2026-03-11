@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.os.Build
 import android.os.BatteryManager
 import android.os.Bundle
 import android.os.SystemClock
@@ -102,6 +103,14 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) startListening() else setStatus("Mic permission needed") }
 
+    private val requestNotifications = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            Log.w(TAG, "Notification permission denied; urgent push alerts may be hidden.")
+        }
+    }
+
     private val requestVitalsPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -191,8 +200,16 @@ class MainActivity : AppCompatActivity() {
         binding.saveKeyBtn.setOnClickListener { onSaveKey() }
         setupAvatarSwipeSwitch()
         applyDayPhaseAppearance(dayPhaseManager.snapshotNow())
+        ensureNotificationPermission()
+        handleAlertOpenIntent(intent)
 
         lifecycleScope.launch { initialise() }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAlertOpenIntent(intent)
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
@@ -335,6 +352,47 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onSaveKey() { /* key set via ADB, not on-watch */ }
+
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun handleAlertOpenIntent(intent: Intent?) {
+        if (intent?.action != AlertContract.ACTION_ALERT_OPEN) return
+
+        val title = intent.getStringExtra(AlertContract.EXTRA_ALERT_TITLE).orEmpty()
+        val body = intent.getStringExtra(AlertContract.EXTRA_ALERT_BODY).orEmpty()
+        val room = intent.getStringExtra(AlertContract.EXTRA_ALERT_ROOM).orEmpty()
+        val prompt = intent.getStringExtra(AlertContract.EXTRA_ALERT_PROMPT).orEmpty()
+
+        val prefix = if (room.isNotBlank()) "[URGENT][$room]" else "[URGENT]"
+        val detail = listOf(title, body).firstOrNull { it.isNotBlank() } ?: "Urgent alert opened."
+        binding.queryText.text = "$prefix $detail"
+        if (prompt.isNotBlank()) {
+            binding.responseText.text = prompt
+        }
+
+        if (state == State.SETUP) {
+            setStatus("Urgent alert received")
+            return
+        }
+
+        interactionToken++
+        cancelAutoListenWindow()
+        stopSpeakingPreview()
+        queryJob?.cancel()
+        queryJob = null
+        voiceEngine.stopListening()
+        voiceEngine.stopSpeaking()
+        setState(State.IDLE)
+        setStatus("Urgent alert opened")
+    }
 
     private fun onFabTapped() {
         val now = SystemClock.elapsedRealtime()
