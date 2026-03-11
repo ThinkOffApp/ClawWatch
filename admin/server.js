@@ -38,6 +38,24 @@ function adb(args, opts = {}) {
   });
 }
 
+function resolveWatchTarget() {
+  if (watchTarget) return watchTarget;
+  try {
+    const out = execFileSync('adb', ['devices'], { timeout: 5000, encoding: 'utf8' });
+    const online = out
+      .split('\n')
+      .filter(l => l.includes('\tdevice'))
+      .map(l => l.split('\t')[0].trim())
+      .filter(Boolean);
+    if (online.length > 0) {
+      watchTarget = online[0];
+      saveState({ watchTarget });
+      return watchTarget;
+    }
+  } catch {}
+  return null;
+}
+
 // ── Watch ADB connection ──────────────────────────────
 
 app.get('/api/watch', (req, res) => {
@@ -77,6 +95,41 @@ app.post('/api/watch/connect', (req, res) => {
     res.json({ ok: true, connected, message: out });
   } catch (e) {
     res.json({ ok: false, error: e.message });
+  }
+});
+
+// Trigger urgent alert on the connected watch (for server-initiated alert bridge testing)
+app.post('/api/watch/alert', (req, res) => {
+  const requiredKey = process.env.CLAWWATCH_ALERT_KEY;
+  const suppliedKey = req.headers['x-clawwatch-alert-key'];
+  if (requiredKey && suppliedKey !== requiredKey) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized alert bridge call' });
+  }
+
+  const payload = req.body || {};
+  const eventId = String(payload.event_id || `evt-${Date.now()}`);
+  const title = String(payload.title || 'URGENT alert');
+  const body = String(payload.body || payload.prompt || 'Open ClawWatch for details.');
+  const room = String(payload.room || '');
+  const prompt = String(payload.prompt || body);
+  const target = resolveWatchTarget();
+  if (!target) return res.json({ ok: false, error: 'Watch target not set. Connect watch first.' });
+
+  try {
+    execFileSync('adb', ['-s', target, ...[
+      'shell', 'am', 'start',
+      '-n', `${PKG}/.MainActivity`,
+      '-a', 'com.thinkoff.clawwatch.ALERT_OPEN',
+      '--es', 'alert_event_id', eventId,
+      '--es', 'alert_title', title,
+      '--es', 'alert_body', body,
+      '--es', 'alert_room', room,
+      '--es', 'alert_prompt', prompt
+    ]], { timeout: 8000, encoding: 'utf8' });
+
+    return res.json({ ok: true, dispatched: true, target, event_id: eventId });
+  } catch (e) {
+    return res.json({ ok: false, error: e.message, target });
   }
 });
 
