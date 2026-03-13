@@ -6,9 +6,6 @@ import android.provider.Settings
 import android.util.Log
 import androidx.lifecycle.LifecycleCoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.OutputStreamWriter
@@ -32,7 +29,7 @@ class WatchIntentAdapter(
         private const val PREF_INTENT_BASE_URL = "intent_base_url"
         private const val PREF_INTENT_USER_ID = "intent_user_id"
         private const val PREF_INTENT_DEVICE_ID = "intent_device_id"
-        private const val HEARTBEAT_INTERVAL_MS = 30_000L
+        private const val BATTERY_DELTA_THRESHOLD = 5
     }
 
     @Volatile private var cachedUserId: String? = null
@@ -41,7 +38,14 @@ class WatchIntentAdapter(
     @Volatile private var currentScreenActive: Boolean = false
     @Volatile private var currentBatteryPct: Int = 100
     @Volatile private var currentLowBattery: Boolean = false
-    private var heartbeatJob: Job? = null
+    @Volatile private var lastPublishedSnapshot: Snapshot? = null
+
+    private data class Snapshot(
+        val state: String,
+        val screenActive: Boolean,
+        val batteryPct: Int,
+        val lowBattery: Boolean
+    )
 
     fun start(
         initialState: String,
@@ -54,22 +58,14 @@ class WatchIntentAdapter(
         currentBatteryPct = batteryPct
         currentLowBattery = lowBattery
         if (!isConfigured()) return
-        if (heartbeatJob?.isActive == true) return
 
-        heartbeatJob = scope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             resolveIdentityIfNeeded()
-            publishState(includeHeartbeat = false)
-            while (isActive) {
-                delay(HEARTBEAT_INTERVAL_MS)
-                publishState(includeHeartbeat = true)
-            }
+            publishState(force = true)
         }
     }
 
-    fun stop() {
-        heartbeatJob?.cancel()
-        heartbeatJob = null
-    }
+    fun stop() = Unit
 
     fun onStateChanged(
         state: String,
@@ -85,7 +81,7 @@ class WatchIntentAdapter(
 
         scope.launch(Dispatchers.IO) {
             resolveIdentityIfNeeded()
-            publishState(includeHeartbeat = false)
+            publishState(force = false)
         }
     }
 
@@ -173,19 +169,34 @@ class WatchIntentAdapter(
         return null
     }
 
-    private fun publishState(includeHeartbeat: Boolean) {
+    private fun shouldPublish(next: Snapshot): Boolean {
+        val prev = lastPublishedSnapshot ?: return true
+        if (prev.state != next.state) return true
+        if (prev.screenActive != next.screenActive) return true
+        if (prev.lowBattery != next.lowBattery) return true
+        if (kotlin.math.abs(prev.batteryPct - next.batteryPct) >= BATTERY_DELTA_THRESHOLD) return true
+        return false
+    }
+
+    private fun publishState(force: Boolean) {
         val userId = cachedUserId ?: return
         val deviceId = cachedDeviceId ?: return
+        val snapshot = Snapshot(
+            state = currentState,
+            screenActive = currentScreenActive,
+            batteryPct = currentBatteryPct,
+            lowBattery = currentLowBattery
+        )
+        if (!force && !shouldPublish(snapshot)) return
 
         val fields = JSONObject().apply {
-            put("context", currentState)
-            put("screen_active", currentScreenActive)
+            put("context", snapshot.state)
+            put("screen_active", snapshot.screenActive)
             put("wrist_raise", false)
             put("device_type", "watch")
             put("active_app", "clawwatch")
-            put("battery_pct", currentBatteryPct)
-            put("low_battery", currentLowBattery)
-            if (includeHeartbeat) put("heartbeat", true)
+            put("battery_pct", snapshot.batteryPct)
+            put("low_battery", snapshot.lowBattery)
         }
 
         try {
@@ -194,6 +205,7 @@ class WatchIntentAdapter(
                 path = "/intent/$userId/$deviceId",
                 body = fields
             )
+            lastPublishedSnapshot = snapshot
         } catch (e: Exception) {
             Log.w(TAG, "Intent publish failed: ${e.message}")
         }
