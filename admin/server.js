@@ -280,15 +280,18 @@ app.post('/api/push/settings', (req, res) => {
     }
     if (rag_mode) updates.rag_mode = rag_mode;
 
-    const settings = { ...current, ...updates };
-    // Poller settings (Server-side)
+    // Poller settings (server-side) + pass key to watch for intent adapter
     const state = loadState();
-    if (antfarm_api_key) state.antfarm_api_key = antfarm_api_key;
+    if (antfarm_api_key) {
+      state.antfarm_api_key = antfarm_api_key;
+      updates.antfarm_api_key = antfarm_api_key;
+    }
     if (antfarm_rooms) state.antfarm_rooms = antfarm_rooms;
     state.poller_dry_run = !!poller_dry_run;
     state.poller_kill_switch = !!poller_kill_switch;
     saveState(state);
 
+    const settings = { ...current, ...updates };
     pushPrefsToWatch(settings);
     res.json({ ok: true, message: 'Settings pushed — restart ClawWatch on the watch' });
   } catch (e) {

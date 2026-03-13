@@ -30,6 +30,7 @@ import com.thinkoff.clawwatch.databinding.ActivityMainBinding
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.abs
 
 /**
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var voiceEngine: VoiceEngine
     private lateinit var dayPhaseManager: DayPhaseManager
     private lateinit var vitalsReader: VitalsReader
+    private lateinit var intentAdapter: WatchIntentAdapter
     private val prefs by lazy { SecurePrefs.watch(this) }
 
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
@@ -179,6 +181,7 @@ class MainActivity : AppCompatActivity() {
         voiceEngine = VoiceEngine(this)
         dayPhaseManager = DayPhaseManager(this)
         vitalsReader = VitalsReader(this)
+        intentAdapter = WatchIntentAdapter(this, prefs, lifecycleScope)
         
         val prefs = getSharedPreferences("claw_prefs", 0)
         currentAvatarIndex = prefs.getInt("avatar_idx", 0)
@@ -202,6 +205,12 @@ class MainActivity : AppCompatActivity() {
         applyDayPhaseAppearance(dayPhaseManager.snapshotNow())
         ensureNotificationPermission()
         handleAlertOpenIntent(intent)
+        intentAdapter.start(
+            initialState = state.name.lowercase(Locale.US),
+            screenActive = false,
+            batteryPct = getBatteryPercentage(),
+            lowBattery = isLowBattery()
+        )
 
         lifecycleScope.launch { initialise() }
     }
@@ -1016,6 +1025,7 @@ class MainActivity : AppCompatActivity() {
             binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
             applyLiveTextVisibility()
             updateAvatarDrawable(s)
+            binding.thinkingIndicator.visibility = if (s == State.THINKING || s == State.SEARCHING) View.VISIBLE else View.GONE
             binding.fab.contentDescription = when (s) {
                 State.IDLE      -> "Tap to talk"
                 State.LISTENING -> "Tap to stop"
@@ -1034,6 +1044,16 @@ class MainActivity : AppCompatActivity() {
                 State.SETUP -> ""
             }
         }
+        val keepOn = when (s) {
+            State.LISTENING, State.THINKING, State.SEARCHING, State.SPEAKING -> true
+            else -> false
+        }
+        intentAdapter.onStateChanged(
+            state = s.name.lowercase(Locale.US),
+            screenActive = keepOn,
+            batteryPct = getBatteryPercentage(),
+            lowBattery = isLowBattery()
+        )
     }
 
 
@@ -1068,6 +1088,7 @@ class MainActivity : AppCompatActivity() {
         avatarAnimator?.cancel()
         stopSpeakingPreview()
         queryJob?.cancel()
+        intentAdapter.stop()
         voiceEngine.release()
     }
 }
