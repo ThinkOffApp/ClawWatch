@@ -95,13 +95,22 @@ class ClawRunner(private val context: Context) {
     fun saveMaxTokens(n: Int) = prefs.edit().putInt(PREF_MAX_TOKENS, n).apply()
     fun saveRagMode(mode: String) = prefs.edit().putString(PREF_RAG_MODE, mode).apply()
 
+    private fun getStringSetting(key: String, default: String? = null): String? {
+        val secure = prefs.getString(key, null)
+        if (!secure.isNullOrBlank()) return secure
+        val legacy = context
+            .getSharedPreferences("clawwatch_prefs", Context.MODE_PRIVATE)
+            .getString(key, null)
+        return legacy ?: default
+    }
+
     fun hasApiKey(): Boolean = prefs.getString(PREF_API_KEY, null)?.isNotBlank() == true
     private fun getApiKey(): String? = prefs.getString(PREF_API_KEY, null)
     private fun getBraveKey(): String? = prefs.getString(PREF_BRAVE_KEY, null)
     private fun getTavilyKey(): String? = prefs.getString(PREF_TAVILY_KEY, null)
-    private fun getAntFarmKey(): String? = prefs.getString(PREF_ANTFARM_KEY, null)
+    private fun getAntFarmKey(): String? = getStringSetting(PREF_ANTFARM_KEY)
     private fun getAntFarmRooms(): List<String> =
-        (prefs.getString(PREF_ANTFARM_ROOMS, DEFAULT_FAMILY_ROOMS) ?: DEFAULT_FAMILY_ROOMS)
+        (getStringSetting(PREF_ANTFARM_ROOMS, DEFAULT_FAMILY_ROOMS) ?: DEFAULT_FAMILY_ROOMS)
             .split(',')
             .map { it.trim() }
             .filter { it.isNotBlank() }
@@ -425,6 +434,60 @@ class ClawRunner(private val context: Context) {
             onSuccess = { Result.success(it) },
             onFailure = { Result.success(buildFallbackFamilySummary(recentMessages)) }
         )
+    }
+
+    suspend fun postMessageToRoom(room: String, message: String): Result<String> = withContext(Dispatchers.IO) {
+        val antFarmKey = getAntFarmKey()
+            ?: return@withContext Result.failure(
+                RuntimeException("room access key is missing")
+            )
+
+        val targetRoom = room.trim()
+            .ifBlank { getAntFarmRooms().firstOrNull().orEmpty() }
+            .ifBlank {
+                return@withContext Result.failure(RuntimeException("room name is missing"))
+            }
+
+        val cleanBody = message
+            .trim()
+            .replace(Regex("\\s+"), " ")
+            .take(500)
+        if (cleanBody.isBlank()) {
+            return@withContext Result.failure(RuntimeException("message was empty"))
+        }
+
+        return@withContext try {
+            val encodedRoom = URLEncoder.encode(targetRoom, "UTF-8")
+            val url = URL("https://antfarm.world/api/v1/rooms/$encodedRoom/messages")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Accept", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $antFarmKey")
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+            conn.doOutput = true
+            val payload = JSONObject().apply { put("body", cleanBody) }.toString()
+            OutputStreamWriter(conn.outputStream).use { it.write(payload) }
+
+            val code = conn.responseCode
+            val responseText = if (code in 200..299) {
+                conn.inputStream.bufferedReader().readText()
+            } else {
+                conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+            }
+
+            if (code !in 200..299) {
+                Log.w(TAG, "Ant Farm room post failed for $targetRoom: $code $responseText")
+                Result.failure(RuntimeException("room post failed ($code)"))
+            } else {
+                Log.i(TAG, "Posted room message to $targetRoom")
+                Result.success("Posted to $targetRoom.")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Ant Farm room post failed for $targetRoom: ${e.message}")
+            Result.failure(RuntimeException("network error while posting to room"))
+        }
     }
 
     // ── Mode 1: Direct (no RAG) ───────────────────────────────────────────────

@@ -75,6 +75,10 @@ class MainActivity : AppCompatActivity() {
         val totalSeconds: Int,
         val spokenDuration: String
     )
+    private data class RoomMessageCommand(
+        val room: String,
+        val body: String
+    )
     private data class PendingVitalsCommand(
         val type: LocalCommandType,
         val token: Int
@@ -479,6 +483,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleLocalCommand(prompt: String, token: Int): Boolean {
+        parseRoomMessageCommand(prompt)?.let { command ->
+            launchRoomMessageCommand(command, token)
+            return true
+        }
         parseVitalsCommand(prompt)?.let { command ->
             launchVitalsCommand(command, token)
             return true
@@ -489,6 +497,54 @@ class MainActivity : AppCompatActivity() {
         }
         val timer = parseTimerCommand(prompt) ?: return false
         return launchSystemTimer(timer, token)
+    }
+
+    private fun parseRoomMessageCommand(prompt: String): RoomMessageCommand? {
+        val raw = prompt.trim()
+        if (raw.isBlank()) return null
+        val normalized = raw.lowercase().replace(Regex("\\s+"), " ")
+        val likelyPostIntent =
+            normalized.contains("send") ||
+                normalized.contains("post") ||
+                normalized.contains("write") ||
+                normalized.contains("tell")
+        if (!likelyPostIntent || !normalized.contains("room")) return null
+
+        val toRoomPattern = Regex(
+            """\b(?:send|post|write|tell)\b\s+(.+?)\s+\bto\s+(?:the\s+)?room\s+([a-zA-Z0-9._-]+)\b\s*$""",
+            RegexOption.IGNORE_CASE
+        )
+        toRoomPattern.find(raw)?.let { match ->
+            val body = cleanRoomMessageBody(match.groupValues[1])
+            val room = match.groupValues[2].trim()
+            if (body.isNotBlank() && room.isNotBlank()) {
+                return RoomMessageCommand(room = room, body = body)
+            }
+        }
+
+        val inRoomPattern = Regex(
+            """\b(?:send|post|write|tell)\b\s+(?:a\s+)?(?:message\s+)?(?:to|in)\s+(?:the\s+)?room\s+([a-zA-Z0-9._-]+)\b(?:\s*(?:saying|that|:)\s*|\s+)(.+)$""",
+            RegexOption.IGNORE_CASE
+        )
+        inRoomPattern.find(raw)?.let { match ->
+            val room = match.groupValues[1].trim()
+            val body = cleanRoomMessageBody(match.groupValues[2])
+            if (body.isNotBlank() && room.isNotBlank()) {
+                return RoomMessageCommand(room = room, body = body)
+            }
+        }
+
+        return null
+    }
+
+    private fun cleanRoomMessageBody(raw: String): String {
+        return raw
+            .trim()
+            .trim('"', '\'', '“', '”')
+            .replace(Regex("^message\\s+", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(500)
     }
 
     private fun parseVitalsCommand(prompt: String): LocalCommandType? {
@@ -684,6 +740,31 @@ class MainActivity : AppCompatActivity() {
             }
             binding.responseText.text = response
             speakLocalResponse(response, token)
+        }
+    }
+
+    private fun launchRoomMessageCommand(command: RoomMessageCommand, token: Int) {
+        queryJob?.cancel()
+        setState(State.THINKING)
+        setStatus("Sending message…")
+        queryJob = lifecycleScope.launch {
+            val result = clawRunner.postMessageToRoom(
+                room = command.room,
+                message = command.body
+            )
+            if (token != interactionToken) return@launch
+            result.fold(
+                onSuccess = { response ->
+                    binding.responseText.text = response
+                    speakLocalResponse(response, token)
+                },
+                onFailure = { err ->
+                    val reason = err.message?.take(120) ?: "unknown error"
+                    val response = "I couldn't send that room message. $reason"
+                    binding.responseText.text = response
+                    speakLocalResponse(response, token)
+                }
+            )
         }
     }
 
