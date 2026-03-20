@@ -11,4 +11,6 @@ object AlertContract {
 
     const val CHANNEL_URGENT_ALERTS = "clawwatch_urgent_alerts"
     const val PREF_LAST_FCM_TOKEN = "last_fcm_token"
+    const val PREF_LAST_FCM_SYNC_AT = "last_fcm_sync_at"
+    const val PREF_LAST_REGISTERED_FCM_TOKEN = "last_registered_fcm_token"
 }
