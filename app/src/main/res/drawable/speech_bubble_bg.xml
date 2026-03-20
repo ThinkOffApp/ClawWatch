@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:left="10dp"
+        android:right="4dp"
+        android:top="4dp"
+        android:bottom="14dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#33000000" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+
+    <item
+        android:left="8dp"
+        android:right="8dp"
+        android:top="2dp"
+        android:bottom="16dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#80FFF8F1" />
+            <stroke
+                android:width="2dp"
+                android:color="#80101010" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+
+    <item
+        android:left="34dp"
+        android:top="42dp"
+        android:right="108dp"
+        android:bottom="2dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#33000000" />
+            <corners
+                android:bottomLeftRadius="16dp"
+                android:bottomRightRadius="16dp"
+                android:topLeftRadius="4dp"
+                android:topRightRadius="16dp" />
+        </shape>
+    </item>
+
+    <item
+        android:left="30dp"
+        android:top="38dp"
+        android:right="112dp"
+        android:bottom="4dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#80FFF8F1" />
+            <stroke
+                android:width="2dp"
+                android:color="#80101010" />
+            <corners
+                android:bottomLeftRadius="16dp"
+                android:bottomRightRadius="16dp"
+                android:topLeftRadius="4dp"
+                android:topRightRadius="16dp" />
+        </shape>
+    </item>
+</layer-list>

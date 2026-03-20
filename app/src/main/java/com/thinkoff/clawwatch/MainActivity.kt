@@ -6,12 +6,14 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Typeface
 import android.os.Build
 import android.os.BatteryManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.AlarmClock
 import android.util.Log
+import android.view.Gravity
 import android.view.ViewConfiguration
 import android.view.MotionEvent
 import android.view.View
@@ -30,7 +32,6 @@ import com.thinkoff.clawwatch.databinding.ActivityMainBinding
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Locale
 import kotlin.math.abs
 
 /**
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_RAG_MODE = "rag_mode"
         private const val PREF_AVATAR_TYPE = "avatar_type"
         private const val PREF_LIVE_TEXT_ENABLED = "live_text_enabled"
+        private const val PREF_STATUS_BUBBLES_ENABLED = "status_bubbles_enabled"
         private const val ACCENT_COLOR = 0xFFD4A5E9.toInt()
         private const val LOW_BATTERY_COLOR = 0xFF9CA3AF.toInt()
         private val AVATARS = listOf("ant", "lobster", "orange_lobster", "robot", "boy", "girl")
@@ -64,7 +66,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var voiceEngine: VoiceEngine
     private lateinit var dayPhaseManager: DayPhaseManager
     private lateinit var vitalsReader: VitalsReader
-    private lateinit var intentAdapter: WatchIntentAdapter
+    private lateinit var watchPushRegistrar: WatchPushRegistrar
     private val prefs by lazy { SecurePrefs.watch(this) }
 
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
@@ -76,12 +78,20 @@ class MainActivity : AppCompatActivity() {
         val spokenDuration: String
     )
     private data class RoomMessageCommand(
-        val room: String,
+        val room: String?,
         val body: String
     )
     private data class PendingVitalsCommand(
         val type: LocalCommandType,
         val token: Int
+    )
+    private data class SpeechRenderPlan(
+        val spokenText: String,
+        val previewText: String,
+        val speechRate: Float = 1.1f,
+        val pitch: Float = 1.0f,
+        val gestureEnergy: Float = 1.0f,
+        val mood: GestureAnimator.Mood = GestureAnimator.Mood.NEUTRAL
     )
     private lateinit var gestureDetector: GestureDetector
     private var currentAvatarIndex = 0
@@ -98,11 +108,13 @@ class MainActivity : AppCompatActivity() {
     private var avatarAnimator: ValueAnimator? = null
     private var listeningPulseAnimator: ValueAnimator? = null
     private var speakingPreviewJob: Job? = null
+    private val gestureAnimator by lazy { GestureAnimator(lifecycleScope) }
     private var lastPartialStatusAt = 0L
     private var avatarSwipeStartX = 0f
     private var avatarSwipeStartY = 0f
     private var avatarSwipeActive = false
     private var avatarTouchStartAt = 0L
+    private var speechAudioStarted = false
     private var pendingVitalsCommand: PendingVitalsCommand? = null
 
     private val requestMic = registerForActivityResult(
@@ -185,7 +197,7 @@ class MainActivity : AppCompatActivity() {
         voiceEngine = VoiceEngine(this)
         dayPhaseManager = DayPhaseManager(this)
         vitalsReader = VitalsReader(this)
-        intentAdapter = WatchIntentAdapter(this, prefs, lifecycleScope)
+        watchPushRegistrar = WatchPushRegistrar(this)
         
         val prefs = getSharedPreferences("claw_prefs", 0)
         currentAvatarIndex = prefs.getInt("avatar_idx", 0)
@@ -209,12 +221,12 @@ class MainActivity : AppCompatActivity() {
         applyDayPhaseAppearance(dayPhaseManager.snapshotNow())
         ensureNotificationPermission()
         handleAlertOpenIntent(intent)
-        intentAdapter.start(
-            initialState = state.name.lowercase(Locale.US),
-            screenActive = false,
-            batteryPct = getBatteryPercentage(),
-            lowBattery = isLowBattery()
-        )
+
+        lifecycleScope.launch {
+            watchPushRegistrar
+                .syncRegistration(trigger = "app_start")
+                .onFailure { Log.w(TAG, "Push registration sync failed: ${it.message}") }
+        }
 
         lifecycleScope.launch { initialise() }
     }
@@ -322,8 +334,9 @@ class MainActivity : AppCompatActivity() {
                 val drawable = ContextCompat.getDrawable(this, resId)
                 binding.avatarView.setImageDrawable(drawable)
                 
-                // Only animate when the user is likely looking at the watch:
-                // active conversation states, not passive idle loops.
+                // Run the state AVD whenever the user is actively engaged.
+                // SPEAKING also gets a looping AVD so the internal claw parts
+                // keep moving while GestureAnimator adds stronger whole-body motion.
                 if (getBatteryPercentage() > 20 && shouldAnimateAvatarForState(s)) {
                     (drawable as? AnimatedVectorDrawable)?.start()
                 }
@@ -483,12 +496,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleLocalCommand(prompt: String, token: Int): Boolean {
-        parseRoomMessageCommand(prompt)?.let { command ->
-            launchRoomMessageCommand(command, token)
-            return true
-        }
         parseVitalsCommand(prompt)?.let { command ->
             launchVitalsCommand(command, token)
+            return true
+        }
+        parseRoomMessageCommand(prompt)?.let { command ->
+            launchRoomMessageCommand(command, token)
             return true
         }
         if (isFamilyStatusCommand(prompt)) {
@@ -497,54 +510,6 @@ class MainActivity : AppCompatActivity() {
         }
         val timer = parseTimerCommand(prompt) ?: return false
         return launchSystemTimer(timer, token)
-    }
-
-    private fun parseRoomMessageCommand(prompt: String): RoomMessageCommand? {
-        val raw = prompt.trim()
-        if (raw.isBlank()) return null
-        val normalized = raw.lowercase().replace(Regex("\\s+"), " ")
-        val likelyPostIntent =
-            normalized.contains("send") ||
-                normalized.contains("post") ||
-                normalized.contains("write") ||
-                normalized.contains("tell")
-        if (!likelyPostIntent || !normalized.contains("room")) return null
-
-        val toRoomPattern = Regex(
-            """\b(?:send|post|write|tell)\b\s+(.+?)\s+\bto\s+(?:the\s+)?room\s+([a-zA-Z0-9._-]+)\b\s*$""",
-            RegexOption.IGNORE_CASE
-        )
-        toRoomPattern.find(raw)?.let { match ->
-            val body = cleanRoomMessageBody(match.groupValues[1])
-            val room = match.groupValues[2].trim()
-            if (body.isNotBlank() && room.isNotBlank()) {
-                return RoomMessageCommand(room = room, body = body)
-            }
-        }
-
-        val inRoomPattern = Regex(
-            """\b(?:send|post|write|tell)\b\s+(?:a\s+)?(?:message\s+)?(?:to|in)\s+(?:the\s+)?room\s+([a-zA-Z0-9._-]+)\b(?:\s*(?:saying|that|:)\s*|\s+)(.+)$""",
-            RegexOption.IGNORE_CASE
-        )
-        inRoomPattern.find(raw)?.let { match ->
-            val room = match.groupValues[1].trim()
-            val body = cleanRoomMessageBody(match.groupValues[2])
-            if (body.isNotBlank() && room.isNotBlank()) {
-                return RoomMessageCommand(room = room, body = body)
-            }
-        }
-
-        return null
-    }
-
-    private fun cleanRoomMessageBody(raw: String): String {
-        return raw
-            .trim()
-            .trim('"', '\'', '“', '”')
-            .replace(Regex("^message\\s+", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-            .take(500)
     }
 
     private fun parseVitalsCommand(prompt: String): LocalCommandType? {
@@ -577,6 +542,38 @@ class MainActivity : AppCompatActivity() {
             normalized.contains("how is") ||
             normalized.contains("status") ||
             normalized.contains("update")
+    }
+
+    private fun parseRoomMessageCommand(prompt: String): RoomMessageCommand? {
+        val normalized = prompt.trim().replace(Regex("\\s+"), " ")
+
+        val explicitMessagePatterns = listOf(
+            Regex("(?i)^send (?:a )?message to (?:(?:the )?(?:room|team|family)|room )(?:(?<room>[a-z0-9._-]+) )?(?:saying |that )?(?<body>.+)$"),
+            Regex("(?i)^post to (?:(?:the )?(?:room|team|family)|room )(?:(?<room>[a-z0-9._-]+) )?(?<body>.+)$"),
+            Regex("(?i)^write to (?:(?:the )?(?:room|team|family)|room )(?:(?<room>[a-z0-9._-]+) )?(?<body>.+)$"),
+            Regex("(?i)^tell (?:(?:the )?(?:room|team|family)) (?:(?<room>[a-z0-9._-]+) )?(?:that )?(?<body>.+)$"),
+            Regex("(?i)^send to (?<room>[a-z0-9._-]+) (?<body>.+)$"),
+            Regex("(?i)^post to (?<room>[a-z0-9._-]+) (?<body>.+)$"),
+            Regex("(?i)^write to (?<room>[a-z0-9._-]+) (?<body>.+)$")
+        )
+
+        for (pattern in explicitMessagePatterns) {
+            val match = pattern.matchEntire(normalized) ?: continue
+            val body = match.groups["body"]?.value?.trim().orEmpty()
+            if (body.isBlank()) continue
+            val room = match.groups["room"]?.value?.trim()?.ifBlank { null }
+            return RoomMessageCommand(room = room, body = sanitizeRoomMessageBody(body))
+        }
+
+        return null
+    }
+
+    private fun sanitizeRoomMessageBody(body: String): String {
+        return body
+            .trim()
+            .removeSurrounding("\"")
+            .removeSurrounding("'")
+            .trim()
     }
 
     private fun parseTimerCommand(prompt: String): TimerCommand? {
@@ -746,25 +743,23 @@ class MainActivity : AppCompatActivity() {
     private fun launchRoomMessageCommand(command: RoomMessageCommand, token: Int) {
         queryJob?.cancel()
         setState(State.THINKING)
-        setStatus("Sending message…")
+        setStatus("Posting to the room…")
         queryJob = lifecycleScope.launch {
-            val result = clawRunner.postMessageToRoom(
-                room = command.room,
-                message = command.body
+            val result = clawRunner.postRoomMessage(
+                message = command.body,
+                requestedRoom = command.room
             )
             if (token != interactionToken) return@launch
-            result.fold(
-                onSuccess = { response ->
-                    binding.responseText.text = response
-                    speakLocalResponse(response, token)
+            val response = result.fold(
+                onSuccess = { room ->
+                    "Okay. I posted that in $room."
                 },
-                onFailure = { err ->
-                    val reason = err.message?.take(120) ?: "unknown error"
-                    val response = "I couldn't send that room message. $reason"
-                    binding.responseText.text = response
-                    speakLocalResponse(response, token)
+                onFailure = {
+                    it.message ?: "I couldn't post that right now."
                 }
             )
+            binding.responseText.text = response
+            speakLocalResponse(response, token)
         }
     }
 
@@ -815,16 +810,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun speakLocalResponse(message: String, token: Int) {
+        val plan = buildSpeechRenderPlan(message)
         setState(State.SPEAKING)
-        startSpeakingPreview(message)
-        voiceEngine.speak(message) {
+        startSpeakingPreview(plan.previewText)
+        gestureAnimator.animateSpeech(
+            binding.avatarContainer,
+            plan.previewText,
+            plan.gestureEnergy,
+            plan.mood
+        )
+        voiceEngine.speak(
+            plan.spokenText,
+            speechRate = plan.speechRate,
+            pitch = plan.pitch,
+            onStart = {
+                runOnUiThread {
+                    speechAudioStarted = true
+                    updateStatusBubbleStyle()
+                }
+            },
+            onDone = {
             runOnUiThread {
                 if (token == interactionToken && state == State.SPEAKING) {
+                    speechAudioStarted = false
+                    gestureAnimator.stop()
                     stopSpeakingPreview()
                     startListening(autoWindow = true)
                 }
             }
-        }
+        })
     }
 
     private fun askClaw(prompt: String, token: Int) {
@@ -838,16 +852,36 @@ class MainActivity : AppCompatActivity() {
             result.fold(
                 onSuccess = { response ->
                     if (token != interactionToken) return@fold
+                    val plan = buildSpeechRenderPlan(response)
                     binding.responseText.text = response
                     setState(State.SPEAKING)
-                    startSpeakingPreview(response)
-                    voiceEngine.speak(response) {
+                    startSpeakingPreview(plan.previewText)
+                    gestureAnimator.animateSpeech(
+                        binding.avatarContainer,
+                        plan.previewText,
+                        plan.gestureEnergy,
+                        plan.mood
+                    )
+                    voiceEngine.speak(
+                        plan.spokenText,
+                        speechRate = plan.speechRate,
+                        pitch = plan.pitch,
+                        onStart = {
+                            runOnUiThread {
+                                speechAudioStarted = true
+                                updateStatusBubbleStyle()
+                            }
+                        },
+                        onDone = {
                         runOnUiThread {
                             if (token == interactionToken && state == State.SPEAKING) {
+                                speechAudioStarted = false
+                                gestureAnimator.stop()
+                                stopSpeakingPreview()
                                 startListening(autoWindow = true)
                             }
                         }
-                    }
+                    })
                 },
                 onFailure = { err ->
                     if (token != interactionToken) return@fold
@@ -939,34 +973,51 @@ class MainActivity : AppCompatActivity() {
     private fun isLiveTextEnabled(): Boolean =
         prefs.getBoolean(PREF_LIVE_TEXT_ENABLED, false)
 
+    private fun areStatusBubblesEnabled(): Boolean =
+        prefs.getBoolean(PREF_STATUS_BUBBLES_ENABLED, true)
+
+    private fun shouldShowStatusOverlay(): Boolean {
+        if (state == State.SETUP) return false
+        if (isLiveTextEnabled()) return true
+        if (!areStatusBubblesEnabled()) return false
+        return when (state) {
+            State.LISTENING, State.THINKING, State.SEARCHING, State.SPEAKING, State.ERROR -> true
+            else -> false
+        }
+    }
+
     private fun showOptionsMenu() {
-        val options = arrayOf("Demo live text: Off", "Demo live text: On")
-        val selected = if (isLiveTextEnabled()) 1 else 0
+        val options = arrayOf(
+            "Live text",
+            "Thought / speech bubbles"
+        )
+        val checked = booleanArrayOf(
+            isLiveTextEnabled(),
+            areStatusBubblesEnabled()
+        )
         AlertDialog.Builder(this)
             .setTitle("Options")
-            .setSingleChoiceItems(options, selected) { dialog, which ->
-                prefs.edit().putBoolean(PREF_LIVE_TEXT_ENABLED, which == 1).apply()
+            .setMultiChoiceItems(options, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton("Apply") { _, _ ->
+                prefs.edit()
+                    .putBoolean(PREF_LIVE_TEXT_ENABLED, checked[0])
+                    .putBoolean(PREF_STATUS_BUBBLES_ENABLED, checked[1])
+                    .apply()
                 applyLiveTextVisibility()
-                if (which == 1) {
-                    setStatus(when (state) {
-                        State.IDLE -> "Tap to talk"
-                        State.LISTENING -> "Listening…"
-                        State.THINKING -> "Thinking…"
-                        State.SEARCHING -> "Searching…"
-                        State.SPEAKING -> "Speaking…"
-                        State.ERROR -> "Error"
-                        State.SETUP -> "API key missing"
-                    })
-                }
-                dialog.dismiss()
+                refreshStatusPresentation()
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
     private fun applyLiveTextVisibility() {
-        val show = isLiveTextEnabled() && state != State.SETUP
+        val show = shouldShowStatusOverlay()
         binding.statusText.visibility = if (show) View.VISIBLE else View.GONE
+        if (show) {
+            refreshStatusPresentation()
+        }
     }
 
     private fun avatarTypeKey(type: AvatarType): String = when (type) {
@@ -1067,6 +1118,7 @@ class MainActivity : AppCompatActivity() {
     private fun stopSpeakingPreview() {
         speakingPreviewJob?.cancel()
         speakingPreviewJob = null
+        gestureAnimator.stop()
     }
 
     private fun applyDayPhaseAppearance(snapshot: DayPhaseManager.Snapshot) {
@@ -1094,6 +1146,9 @@ class MainActivity : AppCompatActivity() {
     private fun setState(s: State) {
         state = s
         runOnUiThread {
+            if (s != State.SPEAKING) {
+                speechAudioStarted = false
+            }
             if (s != State.LISTENING) {
                 listeningPulseAnimator?.cancel()
                 listeningPulseAnimator = null
@@ -1106,7 +1161,6 @@ class MainActivity : AppCompatActivity() {
             binding.mainPanel.visibility   = if (s != State.SETUP)    View.VISIBLE else View.GONE
             applyLiveTextVisibility()
             updateAvatarDrawable(s)
-            binding.thinkingIndicator.visibility = if (s == State.THINKING || s == State.SEARCHING) View.VISIBLE else View.GONE
             binding.fab.contentDescription = when (s) {
                 State.IDLE      -> "Tap to talk"
                 State.LISTENING -> "Tap to stop"
@@ -1125,16 +1179,6 @@ class MainActivity : AppCompatActivity() {
                 State.SETUP -> ""
             }
         }
-        val keepOn = when (s) {
-            State.LISTENING, State.THINKING, State.SEARCHING, State.SPEAKING -> true
-            else -> false
-        }
-        intentAdapter.onStateChanged(
-            state = s.name.lowercase(Locale.US),
-            screenActive = keepOn,
-            batteryPct = getBatteryPercentage(),
-            lowBattery = isLowBattery()
-        )
     }
 
 
@@ -1154,13 +1198,151 @@ class MainActivity : AppCompatActivity() {
     private fun formatStatus(msg: String): String =
         msg.trim().replace(Regex("\\s+"), " ").take(160)
 
+    private fun buildSpeechRenderPlan(rawText: String): SpeechRenderPlan {
+        val stageDirections = Regex("\\*([^*]{1,40})\\*")
+            .findAll(rawText)
+            .mapNotNull { it.groupValues.getOrNull(1)?.trim()?.lowercase() }
+            .toList()
+
+        val spoken = rawText
+            .replace(Regex("\\*[^*]{1,40}\\*"), " ")
+            .replace(Regex("\\s+"), " ")
+            .replace(Regex("\\s+([,.!?;:])"), "$1")
+            .trim()
+            .ifBlank { "..." }
+
+        var speechRate = 1.1f
+        var pitch = 1.0f
+        var gestureEnergy = 1.0f
+        var mood = GestureAnimator.Mood.NEUTRAL
+
+        for (direction in stageDirections) {
+            when {
+                listOf("cheerfully", "warmly", "brightly", "happily").any { direction.contains(it) } -> {
+                    speechRate += 0.03f
+                    pitch += 0.05f
+                    gestureEnergy += 0.12f
+                    if (mood == GestureAnimator.Mood.NEUTRAL) {
+                        mood = GestureAnimator.Mood.CHEERFUL
+                    }
+                }
+                listOf("excited", "enthusiastic", "energetic").any { direction.contains(it) } -> {
+                    speechRate += 0.06f
+                    pitch += 0.03f
+                    gestureEnergy += 0.18f
+                    mood = GestureAnimator.Mood.EXCITED
+                }
+                listOf("chuckles", "laughs", "smiles", "grins").any { direction.contains(it) } -> {
+                    speechRate += 0.02f
+                    pitch += 0.02f
+                    gestureEnergy += 0.14f
+                    if (mood != GestureAnimator.Mood.EXCITED) {
+                        mood = GestureAnimator.Mood.PLAYFUL
+                    }
+                }
+                listOf("calmly", "softly", "gently", "quietly").any { direction.contains(it) } -> {
+                    speechRate -= 0.08f
+                    pitch -= 0.02f
+                    gestureEnergy -= 0.12f
+                    if (mood == GestureAnimator.Mood.NEUTRAL) {
+                        mood = GestureAnimator.Mood.CALM
+                    }
+                }
+                listOf("serious", "firmly", "flatly").any { direction.contains(it) } -> {
+                    speechRate -= 0.03f
+                    pitch -= 0.06f
+                    gestureEnergy += 0.04f
+                    mood = GestureAnimator.Mood.SERIOUS
+                }
+            }
+        }
+
+        return SpeechRenderPlan(
+            spokenText = spoken,
+            previewText = spoken,
+            speechRate = speechRate.coerceIn(0.9f, 1.2f),
+            pitch = pitch.coerceIn(0.9f, 1.15f),
+            gestureEnergy = gestureEnergy.coerceIn(0.85f, 1.35f),
+            mood = mood
+        )
+    }
+
+    private fun refreshStatusPresentation() {
+        val text = binding.statusText.text?.toString().orEmpty()
+        if (!shouldShowStatusOverlay()) {
+            binding.statusText.visibility = View.GONE
+            return
+        }
+        binding.statusText.visibility = View.VISIBLE
+        binding.statusText.text = text
+        updateStatusBubbleStyle()
+    }
+
+    private fun updateStatusBubbleStyle() {
+        val useBubbles = areStatusBubblesEnabled()
+        val useGraphicNovelBubble = useBubbles && when (state) {
+            State.LISTENING, State.THINKING, State.SEARCHING, State.SPEAKING -> true
+            else -> false
+        }
+        val backgroundRes = if (!useGraphicNovelBubble) {
+            R.drawable.live_text_bg
+        } else {
+            when (state) {
+                State.SPEAKING.takeIf { !speechAudioStarted } -> R.drawable.thought_bubble_bg
+                State.LISTENING, State.THINKING, State.SEARCHING -> R.drawable.thought_bubble_bg
+                State.SPEAKING -> R.drawable.speech_bubble_bg
+                else -> R.drawable.live_text_bg
+            }
+        }
+        binding.statusText.setBackgroundResource(backgroundRes)
+        binding.statusText.maxLines = if (useGraphicNovelBubble) 4 else 1
+        binding.statusText.ellipsize = if (useGraphicNovelBubble) null else android.text.TextUtils.TruncateAt.END
+        binding.statusText.setTextColor(if (useGraphicNovelBubble) 0xFF121212.toInt() else ACCENT_COLOR)
+        binding.statusText.setTypeface(null, if (useGraphicNovelBubble) Typeface.BOLD else Typeface.NORMAL)
+        binding.statusText.gravity = when {
+            !useGraphicNovelBubble -> Gravity.CENTER
+            state == State.SPEAKING && speechAudioStarted -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            else -> Gravity.CENTER
+        }
+        val width = if (useGraphicNovelBubble) {
+            (resources.displayMetrics.density * 168).toInt()
+        } else {
+            (resources.displayMetrics.density * 140).toInt()
+        }
+        binding.statusText.layoutParams = binding.statusText.layoutParams.apply {
+            this.width = width
+        }
+        val horizontalPadding = if (useGraphicNovelBubble) {
+            (resources.displayMetrics.density * 12).toInt()
+        } else {
+            (resources.displayMetrics.density * 8).toInt()
+        }
+        val topPadding = when {
+            !useGraphicNovelBubble -> binding.statusText.paddingTop
+            state == State.SPEAKING && speechAudioStarted -> (resources.displayMetrics.density * 12).toInt()
+            else -> (resources.displayMetrics.density * 7).toInt()
+        }
+        val bottomPadding = when {
+            !useGraphicNovelBubble -> binding.statusText.paddingBottom
+            state == State.SPEAKING && speechAudioStarted -> (resources.displayMetrics.density * 12).toInt()
+            else -> (resources.displayMetrics.density * 8).toInt()
+        }
+        binding.statusText.setPadding(
+            horizontalPadding,
+            topPadding,
+            horizontalPadding,
+            bottomPadding
+        )
+    }
+
     private fun setStatus(msg: String) = runOnUiThread {
-        if (!isLiveTextEnabled() || state == State.SETUP) {
+        if (!shouldShowStatusOverlay()) {
             binding.statusText.visibility = View.GONE
             return@runOnUiThread
         }
         binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = formatStatus(msg)
+        updateStatusBubbleStyle()
     }
 
     override fun onDestroy() {
@@ -1169,7 +1351,6 @@ class MainActivity : AppCompatActivity() {
         avatarAnimator?.cancel()
         stopSpeakingPreview()
         queryJob?.cancel()
-        intentAdapter.stop()
         voiceEngine.release()
     }
 }

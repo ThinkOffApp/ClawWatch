@@ -14,7 +14,8 @@
     <application
         android:allowBackup="false"
         android:label="ClawWatch"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_clawwatch_launcher"
+        android:roundIcon="@drawable/ic_clawwatch_launcher"
         android:extractNativeLibs="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.AppCompat.NoActionBar">

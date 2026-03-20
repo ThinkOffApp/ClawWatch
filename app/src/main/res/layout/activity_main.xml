@@ -18,7 +18,7 @@
         <ImageView
             android:layout_width="72dp"
             android:layout_height="72dp"
-            android:src="@mipmap/ic_launcher"
+            android:src="@drawable/ic_clawwatch_launcher"
             android:contentDescription="ClawWatch"
             android:scaleType="fitCenter" />
 
@@ -51,7 +51,7 @@
         <ImageView
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@mipmap/ic_launcher"
+            android:src="@drawable/ic_clawwatch_launcher"
             android:scaleType="fitCenter"
             android:layout_marginBottom="8dp" />
 
@@ -94,26 +94,6 @@
         android:padding="8dp"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="140dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|center_horizontal"
-            android:layout_marginTop="2dp"
-            android:text="Starting…"
-            android:textColor="#D4A5E9"
-            android:textSize="11sp"
-            android:gravity="center"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:includeFontPadding="false"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="5dp"
-            android:paddingBottom="5dp"
-            android:minHeight="24dp"
-            android:background="@drawable/live_text_bg" />
-
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
@@ -140,6 +120,26 @@
                     android:layout_height="match_parent"
                     android:layout_gravity="center"
                     android:scaleType="fitCenter" />
+
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="136dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal|top"
+                    android:layout_marginTop="18dp"
+                    android:text="Starting…"
+                    android:textColor="#D4A5E9"
+                    android:textSize="11sp"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="5dp"
+                    android:paddingBottom="5dp"
+                    android:minHeight="24dp"
+                    android:background="@drawable/live_text_bg" />
             </FrameLayout>
 
             <FrameLayout

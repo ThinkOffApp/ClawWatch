@@ -51,11 +51,16 @@ class ClawRunner(private val context: Context) {
         )
 
         private const val DEFAULT_MODEL = "claude-opus-4-6"
-        private const val DEFAULT_MAX_TOKENS = 150
-        private const val DEFAULT_SYSTEM_PROMPT =
+        private const val LEGACY_DEFAULT_SYSTEM_PROMPT =
             "You are ClawWatch, a smart and relaxed voice presence on a watch. " +
             "Respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. " +
             "Use plain spoken language. Be natural, helpful, and a little playful when it fits, without sounding formal, salesy, or robotic."
+        private const val DEFAULT_MAX_TOKENS = 150
+        private const val DEFAULT_SYSTEM_PROMPT =
+            "You are ClawWatch, an intelligent and relaxed companion living on a watch. " +
+            "Reply in 1 to 3 short spoken sentences. No markdown, no bullet points, no stiff assistant phrasing. " +
+            "Sound natural, grounded, and warm. You can help with the wearer's body, their team rooms, timers, and live information. " +
+            "Do not keep reminding people that you are a smartwatch unless they ask."
 
         private const val MAX_CONTEXT_MESSAGES = 10
         private const val MAX_CONTEXT_CHARS_PER_MESSAGE = 600
@@ -95,22 +100,13 @@ class ClawRunner(private val context: Context) {
     fun saveMaxTokens(n: Int) = prefs.edit().putInt(PREF_MAX_TOKENS, n).apply()
     fun saveRagMode(mode: String) = prefs.edit().putString(PREF_RAG_MODE, mode).apply()
 
-    private fun getStringSetting(key: String, default: String? = null): String? {
-        val secure = prefs.getString(key, null)
-        if (!secure.isNullOrBlank()) return secure
-        val legacy = context
-            .getSharedPreferences("clawwatch_prefs", Context.MODE_PRIVATE)
-            .getString(key, null)
-        return legacy ?: default
-    }
-
     fun hasApiKey(): Boolean = prefs.getString(PREF_API_KEY, null)?.isNotBlank() == true
     private fun getApiKey(): String? = prefs.getString(PREF_API_KEY, null)
     private fun getBraveKey(): String? = prefs.getString(PREF_BRAVE_KEY, null)
     private fun getTavilyKey(): String? = prefs.getString(PREF_TAVILY_KEY, null)
-    private fun getAntFarmKey(): String? = getStringSetting(PREF_ANTFARM_KEY)
+    private fun getAntFarmKey(): String? = prefs.getString(PREF_ANTFARM_KEY, null)
     private fun getAntFarmRooms(): List<String> =
-        (getStringSetting(PREF_ANTFARM_ROOMS, DEFAULT_FAMILY_ROOMS) ?: DEFAULT_FAMILY_ROOMS)
+        (prefs.getString(PREF_ANTFARM_ROOMS, DEFAULT_FAMILY_ROOMS) ?: DEFAULT_FAMILY_ROOMS)
             .split(',')
             .map { it.trim() }
             .filter { it.isNotBlank() }
@@ -133,7 +129,15 @@ class ClawRunner(private val context: Context) {
             context.assets.open(assetName).use { it.copyTo(configFile.outputStream()) }
         }
         buildCaBundle()
+        migrateDefaultPromptIfNeeded()
         Log.i(TAG, "ClawRunner ready, home=${homeDir.absolutePath}, rag=${getRagMode()}")
+    }
+
+    private fun migrateDefaultPromptIfNeeded() {
+        val current = prefs.getString(PREF_SYSTEM_PROMPT, null)?.trim()
+        if (current.isNullOrEmpty() || current == LEGACY_DEFAULT_SYSTEM_PROMPT) {
+            prefs.edit().putString(PREF_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT).apply()
+        }
     }
 
     private fun buildCaBundle() {
@@ -436,58 +440,59 @@ class ClawRunner(private val context: Context) {
         )
     }
 
-    suspend fun postMessageToRoom(room: String, message: String): Result<String> = withContext(Dispatchers.IO) {
-        val antFarmKey = getAntFarmKey()
-            ?: return@withContext Result.failure(
-                RuntimeException("room access key is missing")
-            )
+    suspend fun postRoomMessage(message: String, requestedRoom: String? = null): Result<String> =
+        withContext(Dispatchers.IO) {
+            val antFarmKey = getAntFarmKey()
+                ?: return@withContext Result.failure(
+                    RuntimeException("I don't have room posting access configured yet.")
+                )
+            val room = resolveTargetRoom(requestedRoom)
+                ?: return@withContext Result.failure(
+                    RuntimeException("I couldn't find a room to post to.")
+                )
 
-        val targetRoom = room.trim()
-            .ifBlank { getAntFarmRooms().firstOrNull().orEmpty() }
-            .ifBlank {
-                return@withContext Result.failure(RuntimeException("room name is missing"))
+            return@withContext try {
+                val encodedRoom = URLEncoder.encode(room, "UTF-8")
+                val url = URL("https://antfarm.world/api/v1/rooms/$encodedRoom/messages")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("Accept", "application/json")
+                conn.setRequestProperty("X-API-Key", antFarmKey)
+                conn.connectTimeout = 10_000
+                conn.readTimeout = 10_000
+                conn.doOutput = true
+
+                val payload = JSONObject().apply {
+                    put("body", message.trim())
+                }.toString()
+                OutputStreamWriter(conn.outputStream).use { it.write(payload) }
+
+                val code = conn.responseCode
+                if (code !in 200..299) {
+                    val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                    Log.w(TAG, "Ant Farm room post failed for $room: $code $errorBody")
+                    return@withContext Result.failure(
+                        RuntimeException("I couldn't post to $room right now.")
+                    )
+                }
+
+                Result.success(room)
+            } catch (e: Exception) {
+                Log.w(TAG, "Ant Farm room post failed for $room: ${e.message}")
+                Result.failure(RuntimeException("I couldn't post to $room right now."))
             }
-
-        val cleanBody = message
-            .trim()
-            .replace(Regex("\\s+"), " ")
-            .take(500)
-        if (cleanBody.isBlank()) {
-            return@withContext Result.failure(RuntimeException("message was empty"))
         }
 
-        return@withContext try {
-            val encodedRoom = URLEncoder.encode(targetRoom, "UTF-8")
-            val url = URL("https://antfarm.world/api/v1/rooms/$encodedRoom/messages")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Accept", "application/json")
-            conn.setRequestProperty("Authorization", "Bearer $antFarmKey")
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.connectTimeout = 10_000
-            conn.readTimeout = 10_000
-            conn.doOutput = true
-            val payload = JSONObject().apply { put("body", cleanBody) }.toString()
-            OutputStreamWriter(conn.outputStream).use { it.write(payload) }
-
-            val code = conn.responseCode
-            val responseText = if (code in 200..299) {
-                conn.inputStream.bufferedReader().readText()
-            } else {
-                conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
-            }
-
-            if (code !in 200..299) {
-                Log.w(TAG, "Ant Farm room post failed for $targetRoom: $code $responseText")
-                Result.failure(RuntimeException("room post failed ($code)"))
-            } else {
-                Log.i(TAG, "Posted room message to $targetRoom")
-                Result.success("Posted to $targetRoom.")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Ant Farm room post failed for $targetRoom: ${e.message}")
-            Result.failure(RuntimeException("network error while posting to room"))
+    private fun resolveTargetRoom(requestedRoom: String?): String? {
+        val configuredRooms = getAntFarmRooms()
+        if (requestedRoom.isNullOrBlank()) {
+            return configuredRooms.firstOrNull()
         }
+
+        val normalized = requestedRoom.trim().lowercase()
+        return configuredRooms.firstOrNull { it.equals(normalized, ignoreCase = true) }
+            ?: requestedRoom.trim()
     }
 
     // ── Mode 1: Direct (no RAG) ───────────────────────────────────────────────
@@ -521,7 +526,7 @@ class ClawRunner(private val context: Context) {
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.setRequestProperty("Accept", "application/json")
-            conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            conn.setRequestProperty("X-API-Key", apiKey)
             conn.connectTimeout = 10_000
             conn.readTimeout = 10_000
 

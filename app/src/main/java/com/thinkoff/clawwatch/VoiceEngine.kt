@@ -97,9 +97,19 @@ class VoiceEngine(private val context: Context) {
     }
 
     /** Speak text and call onDone when finished. Fix #6: use UtteranceProgressListener. */
-    fun speak(text: String, onDone: () -> Unit = {}) {
+    fun speak(
+        text: String,
+        speechRate: Float = 1.1f,
+        pitch: Float = 1.0f,
+        onStart: () -> Unit = {},
+        onDone: () -> Unit = {}
+    ) {
+        tts?.setSpeechRate(speechRate.coerceIn(0.85f, 1.25f))
+        tts?.setPitch(pitch.coerceIn(0.85f, 1.20f))
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
+            override fun onStart(utteranceId: String?) {
+                if (utteranceId == TTS_UTTERANCE_ID) onStart()
+            }
             override fun onDone(utteranceId: String?) { if (utteranceId == TTS_UTTERANCE_ID) onDone() }
             override fun onError(utteranceId: String?) { onDone() }
         })
