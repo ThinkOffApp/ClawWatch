@@ -183,6 +183,19 @@
             </FrameLayout>
         </FrameLayout>
 
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/thinkingIndicator"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_gravity="center"
+            android:layout_marginBottom="35dp"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorColor="#D4A5E9"
+            app:indicatorSize="120dp"
+            app:trackColor="#00000000"
+            app:trackThickness="4dp" />
+
         <!-- Legacy bound views kept hidden for compatibility -->
         <TextView
             android:id="@+id/queryText"
@@ -197,12 +210,6 @@
             android:layout_height="1dp"
             android:text=""
             android:visibility="invisible" />
-
-        <ProgressBar
-            android:id="@+id/thinkingIndicator"
-            android:layout_width="1dp"
-            android:layout_height="1dp"
-            android:visibility="gone" />
 
     </FrameLayout>
 

@@ -158,25 +158,30 @@ class VoiceEngine(private val context: Context) {
     fun startListening(onResult: (String) -> Unit, onPartial: (String) -> Unit) {
         val model = voskModel ?: return
         stopListening()
-        recognizer = Recognizer(model, SAMPLE_RATE)
-        speechService = SpeechService(recognizer, SAMPLE_RATE)
-        speechService?.startListening(object : RecognitionListener {
-            override fun onResult(hypothesis: String?) {
-                val text = parseVoskText(hypothesis, "text") ?: return
-                if (text.isNotBlank()) onResult(text)
-            }
-            override fun onPartialResult(hypothesis: String?) {
-                val text = parseVoskText(hypothesis, "partial") ?: return
-                if (text.isNotBlank()) onPartial(text)
-            }
-            // Fix #1/#2: parse JSON properly, handle null
-            override fun onFinalResult(hypothesis: String?) {
-                val text = parseVoskText(hypothesis, "text") ?: return
-                if (text.isNotBlank()) onResult(text)
-            }
-            override fun onError(e: Exception?) { Log.e(TAG, "STT error", e) }
-            override fun onTimeout() { Log.w(TAG, "STT timeout") }
-        })
+        try {
+            recognizer = Recognizer(model, SAMPLE_RATE)
+            speechService = SpeechService(recognizer, SAMPLE_RATE)
+            speechService?.startListening(object : RecognitionListener {
+                override fun onResult(hypothesis: String?) {
+                    val text = parseVoskText(hypothesis, "text") ?: return
+                    if (text.isNotBlank()) onResult(text)
+                }
+                override fun onPartialResult(hypothesis: String?) {
+                    val text = parseVoskText(hypothesis, "partial") ?: return
+                    if (text.isNotBlank()) onPartial(text)
+                }
+                // Fix #1/#2: parse JSON properly, handle null
+                override fun onFinalResult(hypothesis: String?) {
+                    val text = parseVoskText(hypothesis, "text") ?: return
+                    if (text.isNotBlank()) onResult(text)
+                }
+                override fun onError(e: Exception?) { Log.e(TAG, "STT error", e) }
+                override fun onTimeout() { Log.w(TAG, "STT timeout") }
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start Vosk SpeechService", e)
+            onPartial("Mic err: ${e.message ?: "Unknown"}")
+        }
     }
 
     fun stopListening() {

@@ -19,16 +19,11 @@ object SecurePrefs {
         "anthropic_api_key",
         "brave_api_key",
         "tavily_api_key",
-        "antfarm_api_key",
-        "antfarm_rooms",
         "model",
         "system_prompt",
         "max_tokens",
         "rag_mode",
-        "avatar_type",
-        "tts_locale",
-        "tts_voice_name",
-        "tts_engine_package"
+        "avatar_type"
     )
 
     @Volatile
@@ -53,8 +48,8 @@ object SecurePrefs {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "EncryptedSharedPreferences unavailable; refusing plaintext secret storage", e)
-                throw IllegalStateException("Encrypted storage unavailable on this device", e)
+                Log.e(TAG, "FATAL: EncryptedSharedPreferences initialization failed. Refusing to fall back to plaintext to protect secrets.", e)
+                throw SecurityException("Secure storage initialization failed", e)
             }
 
             migrateLegacyIfPresent(appContext, secure)
