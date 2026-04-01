@@ -1,7 +1,12 @@
 package com.thinkoff.clawwatch
 
 import android.content.Context
+import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.media.audiofx.AutomaticGainControl
+import android.media.audiofx.NoiseSuppressor
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -42,6 +47,8 @@ class VoiceEngine(private val context: Context) {
     private var speechService: SpeechService? = null
     private var voskModel: Model? = null
     private var recognizer: Recognizer? = null
+    private var agc: AutomaticGainControl? = null
+    private var noiseSuppressor: NoiseSuppressor? = null
     private val prefs by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SecurePrefs.watch(context) }
     private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
@@ -178,29 +185,138 @@ class VoiceEngine(private val context: Context) {
         }
     }
 
+    /**
+     * Create an AudioRecord using VOICE_RECOGNITION source, which enables
+     * the platform's built-in acoustic echo cancellation and automatic gain
+     * on devices that support it. Falls back to MIC if unavailable.
+     */
+    private fun createAudioRecord(): AudioRecord? {
+        val sampleRate = SAMPLE_RATE.toInt()
+        val bufSize = AudioRecord.getMinBufferSize(
+            sampleRate,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        ).coerceAtLeast(4096)
+
+        // Try VOICE_RECOGNITION first (has platform AGC/AEC on most devices)
+        for (source in intArrayOf(
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            MediaRecorder.AudioSource.MIC
+        )) {
+            try {
+                val rec = AudioRecord(
+                    source, sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    bufSize
+                )
+                if (rec.state == AudioRecord.STATE_INITIALIZED) {
+                    Log.i(TAG, "AudioRecord created with source=$source bufSize=$bufSize")
+                    return rec
+                }
+                rec.release()
+            } catch (e: Exception) {
+                Log.w(TAG, "AudioRecord source=$source failed: ${e.message}")
+            }
+        }
+        return null
+    }
+
+    /** Attach AGC and NoiseSuppressor to an AudioRecord session if available. */
+    private fun attachAudioEffects(audioSessionId: Int) {
+        releaseAudioEffects()
+        try {
+            if (AutomaticGainControl.isAvailable()) {
+                agc = AutomaticGainControl.create(audioSessionId)?.also {
+                    it.enabled = true
+                    Log.i(TAG, "AGC enabled")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "AGC not available: ${e.message}")
+        }
+        try {
+            if (NoiseSuppressor.isAvailable()) {
+                noiseSuppressor = NoiseSuppressor.create(audioSessionId)?.also {
+                    it.enabled = true
+                    Log.i(TAG, "NoiseSuppressor enabled")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "NoiseSuppressor not available: ${e.message}")
+        }
+    }
+
+    private fun releaseAudioEffects() {
+        agc?.release(); agc = null
+        noiseSuppressor?.release(); noiseSuppressor = null
+    }
+
+    private var customAudioRecord: AudioRecord? = null
+    private var recordingThread: Thread? = null
+    @Volatile private var isRecording = false
+
     fun startListening(onResult: (String) -> Unit, onPartial: (String) -> Unit) {
         val model = voskModel ?: return
         stopListening()
         try {
-            recognizer = Recognizer(model, SAMPLE_RATE)
-            speechService = SpeechService(recognizer, SAMPLE_RATE)
-            speechService?.startListening(object : RecognitionListener {
-                override fun onResult(hypothesis: String?) {
-                    val text = parseVoskText(hypothesis, "text") ?: return
-                    if (text.isNotBlank()) onResult(text)
-                }
-                override fun onPartialResult(hypothesis: String?) {
-                    val text = parseVoskText(hypothesis, "partial") ?: return
-                    if (text.isNotBlank()) onPartial(text)
-                }
-                // Fix #1/#2: parse JSON properly, handle null
-                override fun onFinalResult(hypothesis: String?) {
-                    val text = parseVoskText(hypothesis, "text") ?: return
-                    if (text.isNotBlank()) onResult(text)
-                }
-                override fun onError(e: Exception?) { Log.e(TAG, "STT error", e) }
-                override fun onTimeout() { Log.w(TAG, "STT timeout") }
-            })
+            recognizer = Recognizer(model, SAMPLE_RATE).apply {
+                setWords(true)  // word-level timestamps for better accuracy
+            }
+
+            // Try custom AudioRecord with VOICE_RECOGNITION + AGC + NoiseSuppressor
+            val audioRec = createAudioRecord()
+            if (audioRec != null) {
+                attachAudioEffects(audioRec.audioSessionId)
+                customAudioRecord = audioRec
+                isRecording = true
+                audioRec.startRecording()
+                recordingThread = Thread({
+                    val buf = ShortArray(2048)
+                    val rec = recognizer ?: return@Thread
+                    while (isRecording) {
+                        val nread = audioRec.read(buf, 0, buf.size)
+                        if (nread > 0) {
+                            try {
+                                if (rec.acceptWaveForm(buf, nread)) {
+                                    val text = parseVoskText(rec.result, "text")
+                                    if (!text.isNullOrBlank()) onResult(text)
+                                } else {
+                                    val text = parseVoskText(rec.partialResult, "partial")
+                                    if (!text.isNullOrBlank()) onPartial(text)
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Vosk processing error", e)
+                                break
+                            }
+                        }
+                    }
+                    // Skip finalResult — results are already delivered during the loop.
+                    // Calling finalResult after stopListening races with recognizer.close()
+                    // and causes SIGSEGV in native libvosk.
+                }, "vosk-audio-reader").also { it.start() }
+                Log.i(TAG, "Custom AudioRecord listening with VOICE_RECOGNITION + AGC")
+            } else {
+                // Fallback to default SpeechService
+                Log.w(TAG, "Custom AudioRecord failed, falling back to default SpeechService")
+                speechService = SpeechService(recognizer, SAMPLE_RATE)
+                speechService?.startListening(object : RecognitionListener {
+                    override fun onResult(hypothesis: String?) {
+                        val text = parseVoskText(hypothesis, "text") ?: return
+                        if (text.isNotBlank()) onResult(text)
+                    }
+                    override fun onPartialResult(hypothesis: String?) {
+                        val text = parseVoskText(hypothesis, "partial") ?: return
+                        if (text.isNotBlank()) onPartial(text)
+                    }
+                    override fun onFinalResult(hypothesis: String?) {
+                        val text = parseVoskText(hypothesis, "text") ?: return
+                        if (text.isNotBlank()) onResult(text)
+                    }
+                    override fun onError(e: Exception?) { Log.e(TAG, "STT error", e) }
+                    override fun onTimeout() { Log.w(TAG, "STT timeout") }
+                })
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start Vosk SpeechService", e)
             onPartial("Mic err: ${e.message ?: "Unknown"}")
@@ -208,13 +324,26 @@ class VoiceEngine(private val context: Context) {
     }
 
     fun stopListening() {
+        // Signal recording thread to stop and wait for it to exit
+        // before touching recognizer or audioRecord
+        isRecording = false
+        recordingThread?.join(2000)
+        recordingThread = null
+        try {
+            customAudioRecord?.stop()
+        } catch (_: Exception) {}
+        try {
+            customAudioRecord?.release()
+        } catch (_: Exception) {}
+        customAudioRecord = null
         speechService?.stop()
         speechService?.shutdown()
         speechService = null
+        releaseAudioEffects()
+        // Close recognizer only after recording thread has fully exited
         try {
             recognizer?.close()
-        } catch (_: Exception) {
-        }
+        } catch (_: Exception) {}
         recognizer = null
     }
 
@@ -232,6 +361,7 @@ class VoiceEngine(private val context: Context) {
 
     fun release() {
         stopListening()
+        releaseAudioEffects()
         try {
             voskModel?.close()
         } catch (_: Exception) {
