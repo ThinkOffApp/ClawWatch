@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
         private const val FAB_DEBOUNCE_MS = 300L
         private const val AUTO_LISTEN_WINDOW_MS = 3500L
         private const val AVATAR_SWIPE_THRESHOLD_DP = 24f
-        private const val PERMISSION_HEART_RATE = "android.permission.health.READ_HEART_RATE"
+        private const val PERMISSION_HEART_RATE = android.Manifest.permission.BODY_SENSORS
         private const val PREF_RAG_MODE = "rag_mode"
         private const val PREF_AVATAR_TYPE = "avatar_type"
         private const val PREF_LIVE_TEXT_ENABLED = "live_text_enabled"

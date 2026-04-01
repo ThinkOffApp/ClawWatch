@@ -37,7 +37,7 @@ class VitalsReader(context: Context) {
         canReadSteps: Boolean
     ): Snapshot = withContext(Dispatchers.Default) {
         val heartRate = if (canReadHeartRate) {
-            readSingleValue(Sensor.TYPE_HEART_RATE, timeoutMs = 4500L)
+            readSingleValue(Sensor.TYPE_HEART_RATE, timeoutMs = 10000L)
         } else {
             null
         }
