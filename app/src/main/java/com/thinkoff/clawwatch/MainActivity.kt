@@ -117,6 +117,12 @@ class MainActivity : AppCompatActivity() {
     private var speechAudioStarted = false
     private var pendingVitalsCommand: PendingVitalsCommand? = null
 
+    private fun ensureStatusOverlayDefaults() {
+        if (!isLiveTextEnabled() && !prefs.getBoolean(PREF_STATUS_BUBBLES_ENABLED, true)) {
+            prefs.edit().putBoolean(PREF_STATUS_BUBBLES_ENABLED, true).apply()
+        }
+    }
+
     private val requestMic = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) startListening() else setStatus("Mic permission needed") }
@@ -192,6 +198,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        ensureStatusOverlayDefaults()
 
         clawRunner = ClawRunner(this)
         voiceEngine = VoiceEngine(this)
@@ -814,7 +821,7 @@ class MainActivity : AppCompatActivity() {
         setState(State.SPEAKING)
         startSpeakingPreview(plan.previewText)
         gestureAnimator.animateSpeech(
-            binding.avatarContainer,
+            binding.avatarView,
             plan.previewText,
             plan.gestureEnergy,
             plan.mood
@@ -857,7 +864,7 @@ class MainActivity : AppCompatActivity() {
                     setState(State.SPEAKING)
                     startSpeakingPreview(plan.previewText)
                     gestureAnimator.animateSpeech(
-                        binding.avatarContainer,
+                        binding.avatarView,
                         plan.previewText,
                         plan.gestureEnergy,
                         plan.mood
@@ -978,8 +985,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun shouldShowStatusOverlay(): Boolean {
         if (state == State.SETUP) return false
-        if (isLiveTextEnabled()) return true
-        if (!areStatusBubblesEnabled()) return false
+        if (isLiveTextEnabled()) return false
         return when (state) {
             State.LISTENING, State.THINKING, State.SEARCHING, State.SPEAKING, State.ERROR -> true
             else -> false
@@ -1215,6 +1221,9 @@ class MainActivity : AppCompatActivity() {
         var pitch = 1.0f
         var gestureEnergy = 1.0f
         var mood = GestureAnimator.Mood.NEUTRAL
+        val lowerSpoken = spoken.lowercase()
+        val exclamationCount = spoken.count { it == '!' }
+        val questionCount = spoken.count { it == '?' }
 
         for (direction in stageDirections) {
             when {
@@ -1257,12 +1266,63 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        if (mood == GestureAnimator.Mood.NEUTRAL) {
+            mood = when {
+                listOf("great", "glad", "nice", "wonderful", "amazing", "awesome", "love", "perfect", "fantastic").any { lowerSpoken.contains(it) } ->
+                    GestureAnimator.Mood.CHEERFUL
+                listOf("haha", "funny", "maybe", "perhaps", "curious", "hmm", "interesting").any { lowerSpoken.contains(it) } || questionCount > 0 ->
+                    GestureAnimator.Mood.PLAYFUL
+                listOf("sorry", "cannot", "can't", "failed", "error", "need", "must", "important", "careful", "warning").any { lowerSpoken.contains(it) } ->
+                    GestureAnimator.Mood.SERIOUS
+                listOf("calm", "rest", "steady", "gentle", "soft", "quiet", "okay").any { lowerSpoken.contains(it) } ->
+                    GestureAnimator.Mood.CALM
+                exclamationCount >= 2 ->
+                    GestureAnimator.Mood.EXCITED
+                exclamationCount == 1 ->
+                    GestureAnimator.Mood.CHEERFUL
+                else -> GestureAnimator.Mood.NEUTRAL
+            }
+        }
+
+        when (mood) {
+            GestureAnimator.Mood.EXCITED -> {
+                speechRate += 0.04f
+                pitch += 0.02f
+                gestureEnergy += 0.18f
+            }
+            GestureAnimator.Mood.CHEERFUL -> {
+                speechRate += 0.02f
+                pitch += 0.03f
+                gestureEnergy += 0.12f
+            }
+            GestureAnimator.Mood.PLAYFUL -> {
+                speechRate += 0.01f
+                pitch += 0.02f
+                gestureEnergy += 0.15f
+            }
+            GestureAnimator.Mood.CALM -> {
+                speechRate -= 0.06f
+                pitch -= 0.01f
+                gestureEnergy -= 0.08f
+            }
+            GestureAnimator.Mood.SERIOUS -> {
+                speechRate -= 0.02f
+                pitch -= 0.04f
+                gestureEnergy += 0.06f
+            }
+            GestureAnimator.Mood.NEUTRAL -> {
+                if (exclamationCount > 0) {
+                    gestureEnergy += 0.08f
+                }
+            }
+        }
+
         return SpeechRenderPlan(
             spokenText = spoken,
             previewText = spoken,
             speechRate = speechRate.coerceIn(0.9f, 1.2f),
             pitch = pitch.coerceIn(0.9f, 1.15f),
-            gestureEnergy = gestureEnergy.coerceIn(0.85f, 1.35f),
+            gestureEnergy = gestureEnergy.coerceIn(0.8f, 1.6f),
             mood = mood
         )
     }
@@ -1274,6 +1334,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         binding.statusText.visibility = View.VISIBLE
+        binding.statusText.bringToFront()
         binding.statusText.text = text
         updateStatusBubbleStyle()
     }
@@ -1284,6 +1345,12 @@ class MainActivity : AppCompatActivity() {
             State.LISTENING, State.THINKING, State.SEARCHING, State.SPEAKING -> true
             else -> false
         }
+        val useThoughtBubble = useGraphicNovelBubble && (
+            state == State.LISTENING ||
+                state == State.THINKING ||
+                state == State.SEARCHING ||
+                (state == State.SPEAKING && !speechAudioStarted)
+            )
         val backgroundRes = if (!useGraphicNovelBubble) {
             R.drawable.live_text_bg
         } else {
@@ -1295,17 +1362,27 @@ class MainActivity : AppCompatActivity() {
             }
         }
         binding.statusText.setBackgroundResource(backgroundRes)
-        binding.statusText.maxLines = if (useGraphicNovelBubble) 4 else 1
+        binding.statusText.bringToFront()
+        binding.statusText.maxLines = when {
+            !useGraphicNovelBubble -> 1
+            state == State.SPEAKING && speechAudioStarted -> 3
+            else -> 4
+        }
         binding.statusText.ellipsize = if (useGraphicNovelBubble) null else android.text.TextUtils.TruncateAt.END
         binding.statusText.setTextColor(if (useGraphicNovelBubble) 0xFF121212.toInt() else ACCENT_COLOR)
         binding.statusText.setTypeface(null, if (useGraphicNovelBubble) Typeface.BOLD else Typeface.NORMAL)
+        binding.statusText.setLineSpacing(
+            if (useGraphicNovelBubble) resources.displayMetrics.density * 1.5f else 0f,
+            1.0f
+        )
         binding.statusText.gravity = when {
             !useGraphicNovelBubble -> Gravity.CENTER
             state == State.SPEAKING && speechAudioStarted -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             else -> Gravity.CENTER
         }
         val width = if (useGraphicNovelBubble) {
-            (resources.displayMetrics.density * 168).toInt()
+            (resources.displayMetrics.density *
+                if (state == State.SPEAKING && speechAudioStarted) 172 else 168).toInt()
         } else {
             (resources.displayMetrics.density * 140).toInt()
         }
@@ -1319,13 +1396,21 @@ class MainActivity : AppCompatActivity() {
         }
         val topPadding = when {
             !useGraphicNovelBubble -> binding.statusText.paddingTop
-            state == State.SPEAKING && speechAudioStarted -> (resources.displayMetrics.density * 12).toInt()
+            state == State.SPEAKING && speechAudioStarted -> (resources.displayMetrics.density * 14).toInt()
+            useThoughtBubble -> (resources.displayMetrics.density * 8).toInt()
             else -> (resources.displayMetrics.density * 7).toInt()
         }
         val bottomPadding = when {
             !useGraphicNovelBubble -> binding.statusText.paddingBottom
-            state == State.SPEAKING && speechAudioStarted -> (resources.displayMetrics.density * 12).toInt()
+            state == State.SPEAKING && speechAudioStarted -> (resources.displayMetrics.density * 18).toInt()
+            useThoughtBubble -> (resources.displayMetrics.density * 20).toInt()
             else -> (resources.displayMetrics.density * 8).toInt()
+        }
+        binding.statusText.minHeight = when {
+            useThoughtBubble -> (resources.displayMetrics.density * 64).toInt()
+            state == State.SPEAKING && speechAudioStarted -> (resources.displayMetrics.density * 58).toInt()
+            useGraphicNovelBubble -> (resources.displayMetrics.density * 44).toInt()
+            else -> (resources.displayMetrics.density * 24).toInt()
         }
         binding.statusText.setPadding(
             horizontalPadding,

@@ -160,9 +160,36 @@ ClawWatch now bridges two kinds of live context at once:
 
 That combination is the point of the project. ClawWatch is not just another chatbot UI miniaturized onto a watch face. It is an agent that can remain in touch with your conversations, your tools, and your physical state at the same time.
 
+## Mood-Aware Gestures and Animation
+
+ClawWatch's avatar system reacts to the emotional tone of what the agent is saying. Instead of a single generic animation loop, the gesture engine analyzes each response and adjusts motion style, speech rate, pitch, and energy in real time.
+
+**Six mood states** drive qualitatively different animation styles:
+
+| Mood | Motion style | Speech adjustment |
+|---|---|---|
+| **Excited** | Sharp jabs, wide arcs | Faster rate, higher pitch |
+| **Cheerful** | Upward bobs, gentle bounces | Slightly faster, brighter tone |
+| **Playful** | Bouncy, unpredictable movements | Slight speed-up, raised pitch |
+| **Calm** | Slow sways, smooth transitions | Slower rate, slightly lower pitch |
+| **Serious** | Deliberate nods, controlled gestures | Slower rate, lower pitch |
+| **Neutral** | Standard conversational motion | Default parameters |
+
+Mood is detected from the response text using keyword matching and punctuation analysis. Each mood has its own interpolation curve (bounce, overshoot, decelerate) and randomized jitter so the avatar never repeats the same motion twice.
+
+The gesture parser splits text into segments at sentence boundaries, maps each segment to a gesture type (question, exclamation, emphasis, rapid, pause, listing), and schedules them against TTS timing so gestures stay synchronized with speech.
+
+## Thought Bubbles and Status Overlay
+
+During non-speaking states (listening, thinking, searching), ClawWatch now shows thought-bubble style status overlays with adjusted layout and spacing. The status text adapts its line count, padding, and minimum height based on the current state, giving visual feedback that feels natural rather than mechanical.
+
+## Volume Boost for TTS
+
+ClawWatch automatically sets media volume to maximum before speaking, routing TTS through `STREAM_MUSIC` to ensure the agent is audible even on watches with weaker speakers. This removes the common frustration of inaudible responses on small watch hardware.
+
 ## Context-Driven Micro-Event Layer
 
-ClawWatch is moving toward a richer avatar system where visual events are not just decorative loops, but reactions tied to real context.
+ClawWatch's avatar system ties visual events to real context rather than decorative loops.
 
 Examples:
 - the robot's eyes may briefly glow when it locks onto a longer request or switches into an active search state
@@ -172,9 +199,9 @@ Examples:
 The important rule is that these micro-events should be explainable. If a user asks, `what happened to your eyes?`, the agent should be able to answer truthfully because the app knows why the visual event fired.
 
 That means each micro-event should be:
-- **context-driven** — triggered by something real such as prompt length, partial speech activity, search mode, battery level, time of day, or other device state
-- **rare enough to feel meaningful** — not constant visual noise
-- **internally legible** — the app records a short reason for the event so the agent can explain it in plain language
+- **context-driven** -- triggered by something real such as prompt length, partial speech activity, search mode, battery level, time of day, or other device state
+- **rare enough to feel meaningful** -- not constant visual noise
+- **internally legible** -- the app records a short reason for the event so the agent can explain it in plain language
 
 The goal is to make ClawWatch feel more alive without becoming fake, random, or overly theatrical.
 

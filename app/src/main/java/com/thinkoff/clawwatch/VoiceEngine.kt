@@ -1,6 +1,8 @@
 package com.thinkoff.clawwatch
 
 import android.content.Context
+import android.media.AudioManager
+import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -41,6 +43,13 @@ class VoiceEngine(private val context: Context) {
     private var voskModel: Model? = null
     private var recognizer: Recognizer? = null
     private val prefs by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SecurePrefs.watch(context) }
+    private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+
+    /** Set media volume to max so TTS is audible on weaker speakers. */
+    private fun boostVolume() {
+        val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVol, 0)
+    }
 
     // ── TTS ──────────────────────────────────────────────
 
@@ -104,6 +113,7 @@ class VoiceEngine(private val context: Context) {
         onStart: () -> Unit = {},
         onDone: () -> Unit = {}
     ) {
+        boostVolume()
         tts?.setSpeechRate(speechRate.coerceIn(0.85f, 1.25f))
         tts?.setPitch(pitch.coerceIn(0.85f, 1.20f))
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -113,7 +123,10 @@ class VoiceEngine(private val context: Context) {
             override fun onDone(utteranceId: String?) { if (utteranceId == TTS_UTTERANCE_ID) onDone() }
             override fun onError(utteranceId: String?) { onDone() }
         })
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, TTS_UTTERANCE_ID)
+        val params = Bundle().apply {
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+        }
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, params, TTS_UTTERANCE_ID)
     }
 
     fun stopSpeaking() {
