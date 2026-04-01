@@ -56,7 +56,7 @@ Everything except the LLM call runs on the watch itself. Some requests never lea
 
 ## Requirements
 
-- Samsung Galaxy Watch 4 or newer (Wear OS 3+)
+- Samsung Galaxy Watch 7 or newer recommended (Watch Ultra, Watch 8). Older models (Watch 4/5/6) have weaker microphones that struggle with on-device speech recognition.
 - Android phone for initial ADB setup
 - Anthropic API key (or any provider NullClaw supports)
 - Mac/Linux for building
