@@ -18,7 +18,6 @@ import kotlin.math.sqrt
 class VitalsReader(context: Context) {
 
     data class Snapshot(
-        val heartRateBpm: Int?,
         val ambientLux: Float?,
         val pressureHpa: Float?,
         val stepCount: Int?,
@@ -33,15 +32,8 @@ class VitalsReader(context: Context) {
 
     suspend fun readSnapshot(
         batteryPercent: Int,
-        canReadHeartRate: Boolean,
         canReadSteps: Boolean
     ): Snapshot = withContext(Dispatchers.Default) {
-        val heartRate = if (canReadHeartRate) {
-            readSingleValue(Sensor.TYPE_HEART_RATE, timeoutMs = 10000L)
-        } else {
-            null
-        }
-            ?.takeIf { it > 20f }?.roundToIntSafe()
         val ambientLux = readSingleValue(Sensor.TYPE_LIGHT, timeoutMs = 1200L)
         val pressure = readSingleValue(Sensor.TYPE_PRESSURE, timeoutMs = 1200L)
         val steps = if (canReadSteps) {
@@ -53,7 +45,6 @@ class VitalsReader(context: Context) {
         val motionLevel = readMotionLevel()
 
         Snapshot(
-            heartRateBpm = heartRate,
             ambientLux = ambientLux,
             pressureHpa = pressure,
             stepCount = steps,
