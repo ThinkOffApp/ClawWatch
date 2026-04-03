@@ -88,6 +88,21 @@ class ClawRunner(private val context: Context) {
     @Volatile
     private var conversationConfigFingerprint: String? = null
 
+    private val healthConnect = HealthConnectManager(context)
+
+    private suspend fun augmentSystemPromptWithHealth(base: String): String {
+        return try {
+            if (healthConnect.isAvailable() && healthConnect.hasAllPermissions()) {
+                val stats = healthConnect.readRecentHealthData()
+                base + "\n\nHealth Connect Stats: $stats"
+            } else {
+                base
+            }
+        } catch(e: Exception) {
+            base
+        }
+    }
+
     // ── Config accessors ─────────────────────────────────────────────────────
 
     fun saveApiKey(key: String) = prefs.edit().putString(PREF_API_KEY, key).apply()
@@ -503,7 +518,7 @@ class ClawRunner(private val context: Context) {
                 apiKey = apiKey,
                 model = getModel(),
                 maxTokens = getMaxTokens(),
-                systemPrompt = getSystemPrompt(),
+                systemPrompt = augmentSystemPromptWithHealth(getSystemPrompt()),
                 userMessage = prompt
             )
         }
@@ -579,7 +594,7 @@ class ClawRunner(private val context: Context) {
         forceSearch: Boolean
     ): Result<String> =
         withContext(Dispatchers.IO) {
-            var systemPrompt = getSystemPrompt()
+            var systemPrompt = augmentSystemPromptWithHealth(getSystemPrompt())
             if (forceSearch || needsWebSearch(prompt)) {
                 Log.i(TAG, "Kotlin RAG: searching for '$prompt'")
                 val results = webSearch(prompt)
@@ -628,7 +643,7 @@ class ClawRunner(private val context: Context) {
                 val firstBody = JSONObject().apply {
                     put("model", getModel())
                     put("max_tokens", getMaxTokens() + 200) // extra tokens for tool call
-                    put("system", buildCachedSystem(getSystemPrompt()))
+                    put("system", buildCachedSystem(augmentSystemPromptWithHealth(getSystemPrompt())))
                     put("tools", tools)
                     put("messages", buildMessagesWithContext(prompt))
                 }.toString()
@@ -676,7 +691,7 @@ class ClawRunner(private val context: Context) {
                 val secondBody = JSONObject().apply {
                     put("model", getModel())
                     put("max_tokens", getMaxTokens())
-                    put("system", buildCachedSystem(getSystemPrompt()))
+                    put("system", buildCachedSystem(augmentSystemPromptWithHealth(getSystemPrompt())))
                     put("tools", tools)
                     val historyWithTool = buildMessagesWithContext(prompt).apply {
                         // Claude's response with tool call

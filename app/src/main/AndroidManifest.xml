@@ -13,6 +13,11 @@
         <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
+    <!-- Health Connect -->
+    <uses-permission android:name="android.permission.health.READ_STEPS"/>
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
+    <uses-permission android:name="android.permission.health.READ_SLEEP"/>
+
 
     <uses-feature android:name="android.hardware.type.watch" />
 
