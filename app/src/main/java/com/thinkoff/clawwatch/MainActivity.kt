@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private enum class AvatarType { ANT, LOBSTER, ORANGE_LOBSTER, ROBOT, BOY, GIRL }
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
-    private enum class LocalCommandType { VITALS_SNAPSHOT, FAMILY_STATUS }
+    private enum class LocalCommandType { VITALS_SNAPSHOT, HEART_RATE, FAMILY_STATUS }
     private data class TimerCommand(
         val totalSeconds: Int,
         val spokenDuration: String
@@ -519,6 +519,13 @@ class MainActivity : AppCompatActivity() {
     private fun parseVitalsCommand(prompt: String): LocalCommandType? {
         val normalized = prompt.lowercase()
         if (
+            normalized.contains("pulse") ||
+            normalized.contains("heart rate") ||
+            normalized.contains("heartbeat")
+        ) {
+            return LocalCommandType.HEART_RATE
+        }
+        if (
             normalized.contains("check my vitals") ||
             normalized.contains("check vitals") ||
             normalized.contains("my vitals") ||
@@ -679,6 +686,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun requiredVitalsPermissions(command: LocalCommandType): List<String> {
         val permissions = mutableListOf<String>()
+        if (command == LocalCommandType.HEART_RATE || command == LocalCommandType.VITALS_SNAPSHOT) {
+            if (!hasPermission("android.permission.health.READ_HEART_RATE")) {
+                permissions += "android.permission.health.READ_HEART_RATE"
+            }
+        }
         if (command == LocalCommandType.VITALS_SNAPSHOT && !hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
             permissions += Manifest.permission.ACTIVITY_RECOGNITION
         }
@@ -689,7 +701,12 @@ class MainActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun runVitalsCommand(command: LocalCommandType, token: Int) {
+        val canReadHeartRate = hasPermission("android.permission.health.READ_HEART_RATE")
         val canReadSteps = hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)
+        if (command == LocalCommandType.HEART_RATE && !canReadHeartRate) {
+            speakLocalResponse("I need Health Connect permission to read your pulse history.", token)
+            return
+        }
 
         queryJob?.cancel()
         setState(State.THINKING)
@@ -697,12 +714,20 @@ class MainActivity : AppCompatActivity() {
         queryJob = lifecycleScope.launch {
             val snapshot = vitalsReader.readSnapshot(
                 batteryPercent = getBatteryPercentage(),
+                canReadHeartRate = canReadHeartRate,
                 canReadSteps = canReadSteps
             )
             if (token != interactionToken) return@launch
 
             val response = when (command) {
-                LocalCommandType.VITALS_SNAPSHOT -> buildVitalsSummary(snapshot, canReadSteps)
+                LocalCommandType.VITALS_SNAPSHOT -> buildVitalsSummary(snapshot, canReadHeartRate, canReadSteps)
+                LocalCommandType.HEART_RATE -> {
+                    if (snapshot.heartRateBpm != null) {
+                        "Your last recorded pulse is ${snapshot.heartRateBpm} beats per minute."
+                    } else {
+                        "I couldn't find a recent pulse reading in Health Connect."
+                    }
+                }
                 LocalCommandType.FAMILY_STATUS -> "I couldn't check the family yet."
             }
             binding.responseText.text = response
@@ -750,9 +775,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildVitalsSummary(
         snapshot: VitalsReader.Snapshot,
+        canReadHeartRate: Boolean,
         canReadSteps: Boolean
     ): String {
         val details = mutableListOf<String>()
+        if (snapshot.heartRateBpm != null) {
+            details += "Recent pulse was ${snapshot.heartRateBpm}."
+        } else if (!canReadHeartRate) {
+            details += "Pulse history is unavailable without permission."
+        }
         snapshot.ambientLux?.let { lux ->
             details += when {
                 lux < 10f -> "Light around you is dim."
@@ -768,12 +799,15 @@ class MainActivity : AppCompatActivity() {
         } else if (!canReadSteps) {
             details += "Step count is unavailable until you allow activity access."
         }
-        details += describeRecoveryState(snapshot)
+        details += describeRecoveryState(snapshot, snapshot.heartRateBpm)
         return details.joinToString(" ").take(320)
     }
 
-    private fun describeRecoveryState(snapshot: VitalsReader.Snapshot): String {
+    private fun describeRecoveryState(snapshot: VitalsReader.Snapshot, bpm: Int?): String {
         return when {
+            bpm != null && bpm >= 125 -> "Looks like you've been exercising hard recently."
+            bpm != null && bpm >= 95 -> "You've been active and warmed up."
+
             snapshot.motionLevel == VitalsReader.MotionLevel.ACTIVE -> "Looks like you're getting good exercise right now."
             snapshot.motionLevel == VitalsReader.MotionLevel.LIGHT -> "All good, you seem lightly active."
             else -> "All good, you seem to be resting."

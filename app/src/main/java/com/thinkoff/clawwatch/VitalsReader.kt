@@ -1,6 +1,12 @@
 package com.thinkoff.clawwatch
 
 import android.content.Context
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.time.TimeRangeFilter
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -15,9 +21,10 @@ import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-class VitalsReader(context: Context) {
+class VitalsReader(private val context: Context) {
 
     data class Snapshot(
+        val heartRateBpm: Int?,
         val ambientLux: Float?,
         val pressureHpa: Float?,
         val stepCount: Int?,
@@ -32,8 +39,29 @@ class VitalsReader(context: Context) {
 
     suspend fun readSnapshot(
         batteryPercent: Int,
+        canReadHeartRate: Boolean,
         canReadSteps: Boolean
     ): Snapshot = withContext(Dispatchers.Default) {
+        var heartRate: Int? = null
+        if (canReadHeartRate) {
+            try {
+                if (HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE) {
+                    val client = HealthConnectClient.getOrCreate(context)
+                    val response = client.readRecords(
+                        ReadRecordsRequest(
+                            HeartRateRecord::class,
+                            timeRangeFilter = TimeRangeFilter.between(
+                                Instant.now().minus(2, ChronoUnit.HOURS),
+                                Instant.now()
+                            )
+                        )
+                    )
+                    heartRate = response.records.lastOrNull()?.samples?.lastOrNull()?.beatsPerMinute?.toInt()
+                }
+            } catch (e: Exception) {
+                // Ignore health connect errors
+            }
+        }
         val ambientLux = readSingleValue(Sensor.TYPE_LIGHT, timeoutMs = 1200L)
         val pressure = readSingleValue(Sensor.TYPE_PRESSURE, timeoutMs = 1200L)
         val steps = if (canReadSteps) {
@@ -45,6 +73,7 @@ class VitalsReader(context: Context) {
         val motionLevel = readMotionLevel()
 
         Snapshot(
+            heartRateBpm = heartRate,
             ambientLux = ambientLux,
             pressureHpa = pressure,
             stepCount = steps,

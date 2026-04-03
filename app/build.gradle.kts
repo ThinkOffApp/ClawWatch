@@ -77,4 +77,7 @@ dependencies {
     implementation(libs.firebase.messaging)
     // Encrypted key/config storage on watch
     implementation(libs.security.crypto)
+
+    // Health Connect
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
 }
