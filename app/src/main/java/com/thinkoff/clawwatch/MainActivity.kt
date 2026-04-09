@@ -24,6 +24,7 @@ import android.graphics.drawable.AnimatedVectorDrawable
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.health.connect.client.PermissionController
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -67,12 +68,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var vitalsReader: VitalsReader
     private lateinit var watchPushRegistrar: WatchPushRegistrar
     private var intentAdapter: WatchIntentAdapter? = null
+    private lateinit var healthConnectManager: HealthConnectManager
     private val prefs by lazy { SecurePrefs.watch(this) }
 
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private enum class AvatarType { ANT, LOBSTER, ORANGE_LOBSTER, ROBOT, BOY, GIRL }
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
-    private enum class LocalCommandType { VITALS_SNAPSHOT, HEART_RATE, FAMILY_STATUS }
+    private enum class LocalCommandType { VITALS_SNAPSHOT, HEART_RATE, FAMILY_STATUS, HEALTH_SNAPSHOT, SLEEP_SUMMARY }
     private data class TimerCommand(
         val totalSeconds: Int,
         val spokenDuration: String
@@ -142,6 +144,16 @@ class MainActivity : AppCompatActivity() {
         runVitalsCommand(pending.type, pending.token)
     }
 
+    private val requestHealthConnectPermissions = registerForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { granted ->
+        if (granted.containsAll(healthConnectManager.permissions)) {
+            Log.i(TAG, "Health Connect permissions granted")
+        } else {
+            Log.w(TAG, "Health Connect permissions partially denied: $granted")
+        }
+    }
+
     private val avatarExpressions: Map<AvatarType, Map<AvatarState, String>> = mapOf(
         AvatarType.ANT to mapOf(
             AvatarState.IDLE to "🐜",
@@ -204,6 +216,7 @@ class MainActivity : AppCompatActivity() {
         dayPhaseManager = DayPhaseManager(this)
         vitalsReader = VitalsReader(this)
         watchPushRegistrar = WatchPushRegistrar(this)
+        healthConnectManager = HealthConnectManager(this)
         
         val prefs = getSharedPreferences("claw_prefs", 0)
         currentAvatarIndex = prefs.getInt("avatar_idx", 0)
@@ -382,11 +395,13 @@ class MainActivity : AppCompatActivity() {
             onReady = {
                 setState(State.IDLE)
                 setStatus("Tap to talk")
+                requestHealthConnectIfNeeded()
             },
             onError = { err ->
                 Log.w(TAG, "Vosk not ready: $err")
                 setState(State.IDLE)
                 setStatus("Tap to talk")
+                requestHealthConnectIfNeeded()
             }
         )
     }
@@ -513,6 +528,10 @@ class MainActivity : AppCompatActivity() {
             launchVitalsCommand(command, token)
             return true
         }
+        parseHealthCommand(prompt)?.let { command ->
+            launchHealthConnectCommand(command, token)
+            return true
+        }
         parseRoomMessageCommand(prompt)?.let { command ->
             launchRoomMessageCommand(command, token)
             return true
@@ -560,6 +579,74 @@ class MainActivity : AppCompatActivity() {
             normalized.contains("update") ||
             normalized.contains("check") ||
             normalized.contains("happening")
+    }
+
+    private fun parseHealthCommand(prompt: String): LocalCommandType? {
+        val normalized = prompt.lowercase()
+        // Sleep-specific commands
+        if (
+            normalized.contains("how did i sleep") ||
+            normalized.contains("sleep summary") ||
+            normalized.contains("sleep report") ||
+            normalized.contains("last night sleep") ||
+            normalized.contains("my sleep")
+        ) {
+            return LocalCommandType.SLEEP_SUMMARY
+        }
+        // General health commands
+        if (
+            normalized.contains("health stats") ||
+            normalized.contains("health data") ||
+            normalized.contains("health summary") ||
+            normalized.contains("health report") ||
+            normalized.contains("check my health") ||
+            normalized.contains("health snapshot") ||
+            normalized.contains("my health") ||
+            normalized.contains("how's my body") ||
+            normalized.contains("hrv") ||
+            normalized.contains("heart rate variability")
+        ) {
+            return LocalCommandType.HEALTH_SNAPSHOT
+        }
+        return null
+    }
+
+    private fun launchHealthConnectCommand(command: LocalCommandType, token: Int) {
+        queryJob?.cancel()
+        setState(State.THINKING)
+        setStatus(if (command == LocalCommandType.SLEEP_SUMMARY) "Checking sleep…" else "Checking health…")
+        queryJob = lifecycleScope.launch {
+            if (!healthConnectManager.hasAllPermissions()) {
+                val response = "I need Health Connect permissions first. Please grant them in settings."
+                binding.responseText.text = response
+                speakLocalResponse(response, token)
+                requestHealthConnectPermissions.launch(healthConnectManager.permissions)
+                return@launch
+            }
+            val response = when (command) {
+                LocalCommandType.SLEEP_SUMMARY -> healthConnectManager.readSleepSummary()
+                LocalCommandType.HEALTH_SNAPSHOT -> healthConnectManager.readHealthSnapshot()
+                else -> healthConnectManager.readRecentHealthData()
+            }
+            if (token != interactionToken) return@launch
+            binding.responseText.text = response
+            speakLocalResponse(response, token)
+        }
+    }
+
+    private fun requestHealthConnectIfNeeded() {
+        if (!healthConnectManager.isAvailable()) {
+            Log.i(TAG, "Health Connect SDK not available on this watch")
+            return
+        }
+        lifecycleScope.launch {
+            if (!healthConnectManager.hasAllPermissions()) {
+                Log.i(TAG, "Requesting Health Connect permissions")
+                requestHealthConnectPermissions.launch(healthConnectManager.permissions)
+            } else {
+                Log.i(TAG, "Health Connect permissions already granted")
+            }
+        }
     }
 
     private fun parseRoomMessageCommand(prompt: String): RoomMessageCommand? {
@@ -735,6 +822,7 @@ class MainActivity : AppCompatActivity() {
 
             val response = when (command) {
                 LocalCommandType.VITALS_SNAPSHOT -> buildVitalsSummary(snapshot, canReadHeartRate, canReadSteps)
+<<<<<<< HEAD
                 LocalCommandType.HEART_RATE -> {
                     if (snapshot.heartRateBpm != null) {
                         "Your last recorded pulse is ${snapshot.heartRateBpm} beats per minute."
@@ -743,6 +831,10 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 LocalCommandType.FAMILY_STATUS -> "I couldn't check the family yet."
+=======
+                LocalCommandType.HEART_RATE -> buildHeartRateSummary(snapshot)
+                else -> "I couldn't check the family yet."
+>>>>>>> 6a89461 (feat(health): complete Health Connect integration with permission flow)
             }
             binding.responseText.text = response
             speakLocalResponse(response, token)
