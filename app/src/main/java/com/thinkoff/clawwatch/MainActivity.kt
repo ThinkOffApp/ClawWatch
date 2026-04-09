@@ -538,14 +538,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun isFamilyStatusCommand(prompt: String): Boolean {
         val normalized = prompt.lowercase()
-        if (!normalized.contains("family")) return false
+        val hasSubject = normalized.contains("family") ||
+            normalized.contains("room") ||
+            normalized.contains("team")
+        if (!hasSubject) return false
         return normalized.contains("going on") ||
             normalized.contains("what's") ||
             normalized.contains("what is") ||
             normalized.contains("how's") ||
             normalized.contains("how is") ||
             normalized.contains("status") ||
-            normalized.contains("update")
+            normalized.contains("update") ||
+            normalized.contains("check") ||
+            normalized.contains("happening")
     }
 
     private fun parseRoomMessageCommand(prompt: String): RoomMessageCommand? {

@@ -147,7 +147,7 @@ ClawWatch now intercepts some commands locally instead of sending them to the mo
 - **Set a timer**: say `set a timer for 10 minutes` and ClawWatch will hand it off to the watch's internal timer app.
 - **Check pulse**: say `what is my pulse` and ClawWatch will read the watch heart-rate sensor directly.
 - **Check vitals**: say `check my vitals` to get a live snapshot of pulse, movement, light, pressure, and other available watch signals.
-- **Check the family**: say `what's going on with the family` and ClawWatch will summarize the configured Ant Farm room updates.
+- **Check the family**: say `what's going on with the family` and ClawWatch will summarize the configured GroupMind room updates.
 
 This means ClawWatch can act as a real local watch agent instead of bluffing about capabilities it does not have.
 
@@ -155,7 +155,7 @@ This means ClawWatch can act as a real local watch agent instead of bluffing abo
 
 ClawWatch now bridges two kinds of live context at once:
 
-- **Agent context** from Ant Farm rooms and other agents through the [Agent Kit](https://github.com/ThinkOffApp/ide-agent-kit)
+- **Agent context** from GroupMind rooms and other agents through the [Agent Kit](https://github.com/ThinkOffApp/ide-agent-kit)
 - **Body/device context** from the watch's own sensors and runtime state
 
 That combination is the point of the project. ClawWatch is not just another chatbot UI miniaturized onto a watch face. It is an agent that can remain in touch with your conversations, your tools, and your physical state at the same time.

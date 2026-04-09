@@ -19,11 +19,21 @@ object SecurePrefs {
         "anthropic_api_key",
         "brave_api_key",
         "tavily_api_key",
+        "groupmind_api_key",
+        "groupmind_rooms",
         "model",
         "system_prompt",
         "max_tokens",
         "rag_mode",
         "avatar_type"
+    )
+
+    // Old pref key -> new pref key, for seamless rename migration
+    private val RENAMED_KEYS = mapOf(
+        "antfarm_api_key" to "groupmind_api_key",
+        "antfarm_rooms" to "groupmind_rooms",
+        "clawhub_api_key" to "groupmind_api_key",
+        "clawhub_rooms" to "groupmind_rooms"
     )
 
     @Volatile
@@ -53,6 +63,7 @@ object SecurePrefs {
             }
 
             migrateLegacyIfPresent(appContext, secure)
+            migrateRenamedKeys(secure)
             cachedWatchPrefs = secure
             secure
         }
@@ -66,13 +77,15 @@ object SecurePrefs {
         val editor = secure.edit()
         var migrated = false
         for ((key, value) in legacyAll) {
-            if (!MIGRATION_KEYS.contains(key) || value == null) continue
+            if (value == null) continue
+            // Map old key names to new ones, or keep if already a known key
+            val targetKey = RENAMED_KEYS[key] ?: key.takeIf { MIGRATION_KEYS.contains(it) } ?: continue
             when (value) {
-                is String -> editor.putString(key, value)
-                is Int -> editor.putInt(key, value)
-                is Long -> editor.putLong(key, value)
-                is Float -> editor.putFloat(key, value)
-                is Boolean -> editor.putBoolean(key, value)
+                is String -> editor.putString(targetKey, value)
+                is Int -> editor.putInt(targetKey, value)
+                is Long -> editor.putLong(targetKey, value)
+                is Float -> editor.putFloat(targetKey, value)
+                is Boolean -> editor.putBoolean(targetKey, value)
             }
             migrated = true
         }
@@ -81,5 +94,23 @@ object SecurePrefs {
         editor.apply()
         legacy.edit().clear().apply()
         Log.i(TAG, "Migrated legacy watch prefs to encrypted storage")
+    }
+
+    /** Migrate old antfarm_*/clawhub_* keys to groupmind_* within encrypted prefs. */
+    private fun migrateRenamedKeys(secure: SharedPreferences) {
+        val editor = secure.edit()
+        var changed = false
+        for ((oldKey, newKey) in RENAMED_KEYS) {
+            val oldValue = secure.getString(oldKey, null)
+            if (!oldValue.isNullOrBlank() && secure.getString(newKey, null).isNullOrBlank()) {
+                editor.putString(newKey, oldValue)
+                editor.remove(oldKey)
+                changed = true
+            }
+        }
+        if (changed) {
+            editor.apply()
+            Log.i(TAG, "Migrated renamed pref keys to groupmind")
+        }
     }
 }

@@ -228,8 +228,8 @@ app.get('/api/prefs', (req, res) => {
     const prefs = readPrefsFromWatch();
     // Add poller state
     const state = loadState();
-    if (state.antfarm_api_key) prefs.antfarm_api_key = state.antfarm_api_key;
-    if (state.antfarm_rooms) prefs.antfarm_rooms = state.antfarm_rooms;
+    if (state.groupmind_api_key) prefs.groupmind_api_key = state.groupmind_api_key;
+    if (state.groupmind_rooms) prefs.groupmind_rooms = state.groupmind_rooms;
     prefs.poller_dry_run = state.poller_dry_run;
     prefs.poller_kill_switch = state.poller_kill_switch;
 
@@ -242,7 +242,7 @@ app.get('/api/prefs', (req, res) => {
 // Push all settings to watch and save admin state
 app.post('/api/push/settings', (req, res) => {
   const {
-    anthropic_api_key, tavily_api_key, brave_api_key, antfarm_api_key, antfarm_rooms, poller_dry_run, poller_kill_switch, model, avatar_type, system_prompt, max_tokens, rag_mode
+    anthropic_api_key, tavily_api_key, brave_api_key, groupmind_api_key, groupmind_rooms, poller_dry_run, poller_kill_switch, model, avatar_type, system_prompt, max_tokens, rag_mode
   } = req.body;
 
   // Validate API key
@@ -255,7 +255,7 @@ app.post('/api/push/settings', (req, res) => {
   if (brave_api_key && !/^[a-zA-Z0-9\-_]+$/.test(brave_api_key)) {
     return res.json({ ok: false, error: 'Invalid Brave key format' });
   }
-  if (avatar_type && !['ant', 'lobster', 'robot', 'boy', 'girl'].includes(avatar_type)) {
+  if (avatar_type && !['ant', 'lobster', 'orange_lobster', 'robot', 'boy', 'girl'].includes(avatar_type)) {
     return res.json({ ok: false, error: 'Invalid avatar type' });
   }
 
@@ -266,8 +266,8 @@ app.post('/api/push/settings', (req, res) => {
     if (anthropic_api_key) updates.anthropic_api_key = anthropic_api_key;
     if (tavily_api_key) updates.tavily_api_key = tavily_api_key;
     if (brave_api_key) updates.brave_api_key = brave_api_key;
-    if (antfarm_api_key) updates.antfarm_api_key = antfarm_api_key;
-    if (antfarm_rooms) updates.antfarm_rooms = antfarm_rooms;
+    if (groupmind_api_key) updates.groupmind_api_key = groupmind_api_key;
+    if (groupmind_rooms) updates.groupmind_rooms = groupmind_rooms;
     if (model) updates.model = model;
     if (avatar_type) updates.avatar_type = avatar_type;
     if (system_prompt) updates.system_prompt = system_prompt;
@@ -282,11 +282,11 @@ app.post('/api/push/settings', (req, res) => {
 
     // Poller settings (server-side) + pass key to watch for intent adapter
     const state = loadState();
-    if (antfarm_api_key) {
-      state.antfarm_api_key = antfarm_api_key;
-      updates.antfarm_api_key = antfarm_api_key;
+    if (groupmind_api_key) {
+      state.groupmind_api_key = groupmind_api_key;
+      updates.groupmind_api_key = groupmind_api_key;
     }
-    if (antfarm_rooms) state.antfarm_rooms = antfarm_rooms;
+    if (groupmind_rooms) state.groupmind_rooms = groupmind_rooms;
     state.poller_dry_run = !!poller_dry_run;
     state.poller_kill_switch = !!poller_kill_switch;
     saveState(state);

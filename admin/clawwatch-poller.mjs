@@ -17,10 +17,10 @@ function loadState() {
     }
 }
 
-async function pollAntFarm() {
+async function pollGroupMind() {
     const state = loadState();
 
-    if (!state.antfarm_api_key) {
+    if (!state.groupmind_api_key) {
         return; // Wait silently until key is configured
     }
 
@@ -28,16 +28,16 @@ async function pollAntFarm() {
         return; // Killed via admin panel
     }
 
-    const rooms = (state.antfarm_rooms || "").split(',').map(r => r.trim()).filter(Boolean);
+    const rooms = (state.groupmind_rooms || "").split(',').map(r => r.trim()).filter(Boolean);
     if (rooms.length === 0) {
         return; // No rooms configured
     }
 
     for (const room of rooms) {
         try {
-            const url = `https://antfarm.world/api/v1/rooms/${room}/messages?limit=10`;
+            const url = `https://groupmind.one/api/v1/rooms/${room}/messages?limit=10`;
             const resp = await fetch(url, {
-                headers: { 'X-API-Key': state.antfarm_api_key }
+                headers: { 'X-API-Key': state.groupmind_api_key }
             });
 
             if (!resp.ok) continue;
@@ -67,7 +67,7 @@ async function pollAntFarm() {
                     }
 
                     try {
-                        await fetch(`http://127.0.0.1:8787/webhook/antfarm?room=${room}`, {
+                        await fetch(`http://127.0.0.1:8787/webhook/groupmind?room=${room}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(msg)
@@ -83,6 +83,6 @@ async function pollAntFarm() {
     }
 }
 
-console.log("ClawWatch Ant Farm Poller background daemon started.");
+console.log("ClawWatch GroupMind Poller background daemon started.");
 // Poll every 5 seconds
-setInterval(pollAntFarm, 5000);
+setInterval(pollGroupMind, 5000);

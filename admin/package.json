@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "webhook": "node antfarm-webhook.js"
+    "webhook": "node groupmind-webhook.js"
   },
   "dependencies": {
     "dotenv": "^17.3.1",

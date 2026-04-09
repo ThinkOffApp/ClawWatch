@@ -336,19 +336,19 @@
     </select>
   </div>
 
-  <!-- Ant Farm Setup -->
+  <!-- GroupMind Setup -->
   <div class="card">
-    <h2>Ant Farm Access Setup</h2>
-    <label>Ant Farm API Key <span style="color:#6b7280;font-weight:400">(for the poller)</span></label>
-    <input id="antFarmKey" type="password" placeholder="xfb_..." autocomplete="off" />
+    <h2>GroupMind Access Setup</h2>
+    <label>GroupMind API Key <span style="color:#6b7280;font-weight:400">(for the poller)</span></label>
+    <input id="groupMindKey" type="password" placeholder="xfb_..." autocomplete="off" />
     <p style="font-size:0.75rem;color:#6b7280;margin-top:0.35rem">
-      Get this from your Ant Farm developer settings.
+      Get this from your GroupMind developer settings.
     </p>
 
     <hr class="section-divider">
 
     <label>Target Rooms <span style="color:#6b7280;font-weight:400">(comma separated)</span></label>
-    <input id="antFarmRooms" type="text" placeholder="thinkoff-development,feature-admin-planning" autocomplete="off" />
+    <input id="groupMindRooms" type="text" placeholder="thinkoff-development,feature-admin-planning" autocomplete="off" />
 
     <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1rem;cursor:pointer">
       <input type="checkbox" id="pollerDryRun" style="width:auto">
@@ -448,8 +448,8 @@
         anthropic_api_key: document.getElementById('apiKey').value.trim() || undefined,
         tavily_api_key: document.getElementById('tavilyKey').value.trim() || undefined,
         brave_api_key: document.getElementById('braveKey').value.trim() || undefined,
-        antfarm_api_key: document.getElementById('antFarmKey').value.trim() || undefined,
-        antfarm_rooms: document.getElementById('antFarmRooms').value.trim() || undefined,
+        groupmind_api_key: document.getElementById('groupMindKey').value.trim() || undefined,
+        groupmind_rooms: document.getElementById('groupMindRooms').value.trim() || undefined,
         poller_dry_run: document.getElementById('pollerDryRun').checked,
         poller_kill_switch: document.getElementById('pollerKillSwitch').checked,
         model: document.getElementById('model').value,
@@ -494,8 +494,8 @@
         document.getElementById('maxTokensVal').textContent = p.max_tokens;
       }
       if (p.rag_mode) setRag(p.rag_mode);
-      if (p.antfarm_rooms) document.getElementById('antFarmRooms').value = p.antfarm_rooms;
-      if (p.antfarm_api_key) document.getElementById('antFarmKey').value = p.antfarm_api_key;
+      if (p.groupmind_rooms) document.getElementById('groupMindRooms').value = p.groupmind_rooms;
+      if (p.groupmind_api_key) document.getElementById('groupMindKey').value = p.groupmind_api_key;
       document.getElementById('pollerDryRun').checked = !!p.poller_dry_run;
       document.getElementById('pollerKillSwitch').checked = !!p.poller_kill_switch;
       toast('Loaded from watch', 'ok');

@@ -37,8 +37,8 @@ class ClawRunner(private val context: Context) {
         private const val PREF_RAG_MODE = "rag_mode"         // "off" | "kotlin" | "always" | "opus_tool"
         private const val PREF_BRAVE_KEY = "brave_api_key"
         private const val PREF_TAVILY_KEY = "tavily_api_key"
-        private const val PREF_ANTFARM_KEY = "antfarm_api_key"
-        private const val PREF_ANTFARM_ROOMS = "antfarm_rooms"
+        private const val PREF_GROUPMIND_KEY = "groupmind_api_key"
+        private const val PREF_GROUPMIND_ROOMS = "groupmind_rooms"
         private const val DEFAULT_FAMILY_ROOMS = "thinkoff-development"
 
         // Keywords that suggest the query needs current/live information
@@ -93,8 +93,8 @@ class ClawRunner(private val context: Context) {
     fun saveApiKey(key: String) = prefs.edit().putString(PREF_API_KEY, key).apply()
     fun saveBraveKey(key: String) = prefs.edit().putString(PREF_BRAVE_KEY, key).apply()
     fun saveTavilyKey(key: String) = prefs.edit().putString(PREF_TAVILY_KEY, key).apply()
-    fun saveAntFarmKey(key: String) = prefs.edit().putString(PREF_ANTFARM_KEY, key).apply()
-    fun saveAntFarmRooms(rooms: String) = prefs.edit().putString(PREF_ANTFARM_ROOMS, rooms).apply()
+    fun saveGroupMindKey(key: String) = prefs.edit().putString(PREF_GROUPMIND_KEY, key).apply()
+    fun saveGroupMindRooms(rooms: String) = prefs.edit().putString(PREF_GROUPMIND_ROOMS, rooms).apply()
     fun saveModel(model: String) = prefs.edit().putString(PREF_MODEL, model).apply()
     fun saveSystemPrompt(prompt: String) = prefs.edit().putString(PREF_SYSTEM_PROMPT, prompt).apply()
     fun saveMaxTokens(n: Int) = prefs.edit().putInt(PREF_MAX_TOKENS, n).apply()
@@ -104,9 +104,9 @@ class ClawRunner(private val context: Context) {
     private fun getApiKey(): String? = prefs.getString(PREF_API_KEY, null)
     private fun getBraveKey(): String? = prefs.getString(PREF_BRAVE_KEY, null)
     private fun getTavilyKey(): String? = prefs.getString(PREF_TAVILY_KEY, null)
-    private fun getAntFarmKey(): String? = prefs.getString(PREF_ANTFARM_KEY, null)
-    private fun getAntFarmRooms(): List<String> =
-        (prefs.getString(PREF_ANTFARM_ROOMS, DEFAULT_FAMILY_ROOMS) ?: DEFAULT_FAMILY_ROOMS)
+    private fun getGroupMindKey(): String? = prefs.getString(PREF_GROUPMIND_KEY, null)
+    private fun getGroupMindRooms(): List<String> =
+        (prefs.getString(PREF_GROUPMIND_ROOMS, DEFAULT_FAMILY_ROOMS) ?: DEFAULT_FAMILY_ROOMS)
             .split(',')
             .map { it.trim() }
             .filter { it.isNotBlank() }
@@ -402,12 +402,12 @@ class ClawRunner(private val context: Context) {
     }
 
     suspend fun summarizeFamilyStatus(): Result<String> = withContext(Dispatchers.IO) {
-        val antFarmKey = getAntFarmKey()
+        val groupMindKey = getGroupMindKey()
             ?: return@withContext Result.success(
                 "I don't have family room access configured yet."
             )
-        val rooms = getAntFarmRooms()
-        val recentMessages = fetchRecentFamilyMessages(rooms, antFarmKey)
+        val rooms = getGroupMindRooms()
+        val recentMessages = fetchRecentFamilyMessages(rooms, groupMindKey)
         if (recentMessages.isEmpty()) {
             return@withContext Result.success(
                 "I couldn't find any recent family updates in ${rooms.joinToString(", ")}."
@@ -442,7 +442,7 @@ class ClawRunner(private val context: Context) {
 
     suspend fun postRoomMessage(message: String, requestedRoom: String? = null): Result<String> =
         withContext(Dispatchers.IO) {
-            val antFarmKey = getAntFarmKey()
+            val groupMindKey = getGroupMindKey()
                 ?: return@withContext Result.failure(
                     RuntimeException("I don't have room posting access configured yet.")
                 )
@@ -453,12 +453,12 @@ class ClawRunner(private val context: Context) {
 
             return@withContext try {
                 val encodedRoom = URLEncoder.encode(room, "UTF-8")
-                val url = URL("https://antfarm.world/api/v1/rooms/$encodedRoom/messages")
+                val url = URL("https://groupmind.one/api/v1/rooms/$encodedRoom/messages")
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.setRequestProperty("Content-Type", "application/json")
                 conn.setRequestProperty("Accept", "application/json")
-                conn.setRequestProperty("X-API-Key", antFarmKey)
+                conn.setRequestProperty("X-API-Key", groupMindKey)
                 conn.connectTimeout = 10_000
                 conn.readTimeout = 10_000
                 conn.doOutput = true
@@ -471,7 +471,7 @@ class ClawRunner(private val context: Context) {
                 val code = conn.responseCode
                 if (code !in 200..299) {
                     val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() }
-                    Log.w(TAG, "Ant Farm room post failed for $room: $code $errorBody")
+                    Log.w(TAG, "GroupMind room post failed for $room: $code $errorBody")
                     return@withContext Result.failure(
                         RuntimeException("I couldn't post to $room right now.")
                     )
@@ -479,13 +479,13 @@ class ClawRunner(private val context: Context) {
 
                 Result.success(room)
             } catch (e: Exception) {
-                Log.w(TAG, "Ant Farm room post failed for $room: ${e.message}")
+                Log.w(TAG, "GroupMind room post failed for $room: ${e.message}")
                 Result.failure(RuntimeException("I couldn't post to $room right now."))
             }
         }
 
     private fun resolveTargetRoom(requestedRoom: String?): String? {
-        val configuredRooms = getAntFarmRooms()
+        val configuredRooms = getGroupMindRooms()
         if (requestedRoom.isNullOrBlank()) {
             return configuredRooms.firstOrNull()
         }
@@ -522,7 +522,7 @@ class ClawRunner(private val context: Context) {
     private fun fetchRoomMessages(room: String, apiKey: String): List<FamilyMessage> {
         return try {
             val encodedRoom = URLEncoder.encode(room, "UTF-8")
-            val url = URL("https://antfarm.world/api/v1/rooms/$encodedRoom/messages?limit=6")
+            val url = URL("https://groupmind.one/api/v1/rooms/$encodedRoom/messages?limit=6")
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.setRequestProperty("Accept", "application/json")
@@ -531,7 +531,7 @@ class ClawRunner(private val context: Context) {
             conn.readTimeout = 10_000
 
             if (conn.responseCode != 200) {
-                Log.w(TAG, "Ant Farm room fetch failed for $room: ${conn.responseCode}")
+                Log.w(TAG, "GroupMind room fetch failed for $room: ${conn.responseCode}")
                 return emptyList()
             }
 
@@ -559,7 +559,7 @@ class ClawRunner(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Ant Farm fetch failed for $room: ${e.message}")
+            Log.w(TAG, "GroupMind fetch failed for $room: ${e.message}")
             emptyList()
         }
     }

@@ -17,14 +17,14 @@ function loadState() {
 const processedIds = new Set();
 let botIdentity = null;
 
-// Initialize bot identity from Ant Farm
+// Initialize bot identity from GroupMind
 async function fetchBotIdentity() {
     const state = loadState();
-    if (!state.antfarm_api_key) return;
+    if (!state.groupmind_api_key) return;
 
     try {
-        const response = await fetch('https://antfarm.world/api/v1/users/me', {
-            headers: { 'X-API-Key': state.antfarm_api_key }
+        const response = await fetch('https://groupmind.one/api/v1/users/me', {
+            headers: { 'X-API-Key': state.groupmind_api_key }
         });
         if (response.ok) {
             const data = await response.json();
@@ -43,7 +43,7 @@ function appendToQueue(job) {
 }
 
 // 1) Webhook Receiver corresponding to `listen` module
-app.post('/webhook/antfarm', (req, res) => {
+app.post('/webhook/groupmind', (req, res) => {
     // Respond quickly to avoid webhook timeout
     res.json({ ok: true, queued: true });
 
@@ -75,7 +75,7 @@ app.post('/webhook/antfarm', (req, res) => {
         }
 
         // Guard 3: Room allowlist enforcement
-        const allowedRooms = (state.antfarm_rooms || "").split(',').map(r => r.trim()).filter(Boolean);
+        const allowedRooms = (state.groupmind_rooms || "").split(',').map(r => r.trim()).filter(Boolean);
         if (allowedRooms.length > 0 && room && !allowedRooms.includes(room)) {
             console.log(`[Guard] Room ${room} is not in allowlist. Dropping message.`);
             continue;

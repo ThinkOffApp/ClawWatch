@@ -45,7 +45,8 @@ class VitalsReader(private val context: Context) {
         var heartRate: Int? = null
         if (canReadHeartRate) {
             try {
-                if (HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE) {
+                val sdkStatus = HealthConnectClient.getSdkStatus(context)
+                if (sdkStatus == HealthConnectClient.SDK_AVAILABLE) {
                     val client = HealthConnectClient.getOrCreate(context)
                     val response = client.readRecords(
                         ReadRecordsRequest(
@@ -57,9 +58,11 @@ class VitalsReader(private val context: Context) {
                         )
                     )
                     heartRate = response.records.lastOrNull()?.samples?.lastOrNull()?.beatsPerMinute?.toInt()
+                } else {
+                    android.util.Log.w("VitalsReader", "Health Connect SDK not available (status=$sdkStatus). Install or enable Health Connect on this watch.")
                 }
             } catch (e: Exception) {
-                // Ignore health connect errors
+                android.util.Log.w("VitalsReader", "Health Connect read failed: ${e.message}")
             }
         }
         val ambientLux = readSingleValue(Sensor.TYPE_LIGHT, timeoutMs = 1200L)

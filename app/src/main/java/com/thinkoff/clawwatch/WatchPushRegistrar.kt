@@ -14,9 +14,9 @@ class WatchPushRegistrar(private val context: Context) {
 
     companion object {
         private const val TAG = "WatchPushRegistrar"
-        private const val PREF_ANTFARM_KEY = "antfarm_api_key"
-        private const val ENDPOINT_AGENTS_ME = "https://antfarm.world/api/v1/agents/me"
-        private const val ENDPOINT_WATCH_DEVICES = "https://antfarm.world/api/v1/watch/devices"
+        private const val PREF_GROUPMIND_KEY = "groupmind_api_key"
+        private const val ENDPOINT_AGENTS_ME = "https://groupmind.one/api/v1/agents/me"
+        private const val ENDPOINT_WATCH_DEVICES = "https://groupmind.one/api/v1/watch/devices"
         private const val MIN_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000L // 6h
     }
 
@@ -27,9 +27,9 @@ class WatchPushRegistrar(private val context: Context) {
     ): Result<Unit> {
         return runCatching {
             val prefs = SecurePrefs.watch(context)
-            val antFarmApiKey = prefs.getString(PREF_ANTFARM_KEY, null)?.trim().orEmpty()
-            if (antFarmApiKey.isBlank()) {
-                Log.i(TAG, "Skipping push registration: antfarm_api_key missing")
+            val groupMindApiKey = prefs.getString(PREF_GROUPMIND_KEY, null)?.trim().orEmpty()
+            if (groupMindApiKey.isBlank()) {
+                Log.i(TAG, "Skipping push registration: groupmind_api_key missing")
                 return@runCatching
             }
 
@@ -56,8 +56,8 @@ class WatchPushRegistrar(private val context: Context) {
                 return@runCatching
             }
 
-            val agentHandle = fetchAgentHandle(antFarmApiKey)
-            registerDevice(antFarmApiKey, agentHandle, fcmToken)
+            val agentHandle = fetchAgentHandle(groupMindApiKey)
+            registerDevice(groupMindApiKey, agentHandle, fcmToken)
 
             prefs.edit()
                 .putString(AlertContract.PREF_LAST_REGISTERED_FCM_TOKEN, fcmToken)

@@ -24,8 +24,8 @@ class WatchIntentAdapter(
 ) {
     companion object {
         private const val TAG = "WatchIntentAdapter"
-        private const val DEFAULT_BASE_URL = "https://antfarm.world/api/v1"
-        private const val PREF_ANTFARM_API_KEY = "antfarm_api_key"
+        private const val DEFAULT_BASE_URL = "https://groupmind.one/api/v1"
+        private const val PREF_GROUPMIND_API_KEY = "groupmind_api_key"
         private const val PREF_INTENT_BASE_URL = "intent_base_url"
         private const val PREF_INTENT_USER_ID = "intent_user_id"
         private const val PREF_INTENT_DEVICE_ID = "intent_device_id"
@@ -100,7 +100,7 @@ class WatchIntentAdapter(
             .trim()
             .trimEnd('/')
 
-    private fun apiKey(): String = prefString(PREF_ANTFARM_API_KEY).orEmpty()
+    private fun apiKey(): String = prefString(PREF_GROUPMIND_API_KEY).orEmpty()
 
     private fun resolveIdentityIfNeeded() {
         if (cachedDeviceId.isNullOrBlank()) {
