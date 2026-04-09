@@ -854,19 +854,8 @@ class MainActivity : AppCompatActivity() {
 
             val response = when (command) {
                 LocalCommandType.VITALS_SNAPSHOT -> buildVitalsSummary(snapshot, canReadHeartRate, canReadSteps)
-<<<<<<< HEAD
-                LocalCommandType.HEART_RATE -> {
-                    if (snapshot.heartRateBpm != null) {
-                        "Your last recorded pulse is ${snapshot.heartRateBpm} beats per minute."
-                    } else {
-                        "I couldn't find a recent pulse reading in Health Connect."
-                    }
-                }
-                LocalCommandType.FAMILY_STATUS -> "I couldn't check the family yet."
-=======
                 LocalCommandType.HEART_RATE -> buildHeartRateSummary(snapshot)
-                else -> "I couldn't check the family yet."
->>>>>>> 6a89461 (feat(health): complete Health Connect integration with permission flow)
+                else -> "I couldn't process that command."
             }
             binding.responseText.text = response
             speakLocalResponse(response, token)
@@ -911,6 +900,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private suspend fun buildHeartRateSummary(snapshot: VitalsReader.Snapshot): String {
+        val bpm = snapshot.heartRateBpm
+        if (bpm != null) {
+            return "Your pulse is $bpm beats per minute. ${describeRecoveryState(snapshot, bpm)}"
+        }
+
+        // Raw sensor failed — fall back to Health Connect
+        try {
+            if (healthConnectManager.hasAnyPermission()) {
+                val now = java.time.Instant.now()
+                val timeRange = androidx.health.connect.client.time.TimeRangeFilter.between(
+                    now.minus(1, java.time.temporal.ChronoUnit.HOURS), now
+                )
+                val request = androidx.health.connect.client.request.ReadRecordsRequest(
+                    recordType = androidx.health.connect.client.records.HeartRateRecord::class,
+                    timeRangeFilter = timeRange
+                )
+                val response = healthConnectManager.healthConnectClient?.readRecords(request)
+                val lastBpm = response?.records?.lastOrNull()?.samples?.lastOrNull()?.beatsPerMinute
+                if (lastBpm != null) {
+                    return "Your last recorded heart rate was $lastBpm beats per minute, from Health Connect."
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "HC heart rate fallback failed: ${e.message}")
+        }
+
+        return "I couldn't get a pulse reading right now. Keep the watch snug and try again."
+    }
     private fun buildVitalsSummary(
         snapshot: VitalsReader.Snapshot,
         canReadHeartRate: Boolean,

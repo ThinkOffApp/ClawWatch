@@ -11,6 +11,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Handler
+import android.os.Looper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -36,6 +38,7 @@ class VitalsReader(private val context: Context) {
 
     private val sensorManager =
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     suspend fun readSnapshot(
         batteryPercent: Int,
@@ -96,13 +99,14 @@ class VitalsReader(private val context: Context) {
             val listener = object : SensorEventListener {
                 override fun onSensorChanged(event: SensorEvent) {
                     sensorManager.unregisterListener(this)
-                    cont.resume(event.values.firstOrNull())
+                    if (cont.isActive) cont.resume(event.values.firstOrNull())
                 }
                 override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
             }
 
             try {
-                sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+                // Register with mainHandler so callbacks are delivered on main Looper
+                sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL, mainHandler)
             } catch (_: SecurityException) {
                 cont.resume(null)
                 return@suspendCancellableCoroutine
@@ -138,7 +142,7 @@ class VitalsReader(private val context: Context) {
             }
 
             try {
-                sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+                sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL, mainHandler)
             } catch (_: SecurityException) {
                 cont.resume(MotionLevel.STILL)
                 return@suspendCancellableCoroutine
