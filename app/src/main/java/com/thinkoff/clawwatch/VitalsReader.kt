@@ -45,29 +45,11 @@ class VitalsReader(private val context: Context) {
         canReadHeartRate: Boolean,
         canReadSteps: Boolean
     ): Snapshot = withContext(Dispatchers.Default) {
-        var heartRate: Int? = null
-        if (canReadHeartRate) {
-            try {
-                val sdkStatus = HealthConnectClient.getSdkStatus(context)
-                if (sdkStatus == HealthConnectClient.SDK_AVAILABLE) {
-                    val client = HealthConnectClient.getOrCreate(context)
-                    val response = client.readRecords(
-                        ReadRecordsRequest(
-                            HeartRateRecord::class,
-                            timeRangeFilter = TimeRangeFilter.between(
-                                Instant.now().minus(2, ChronoUnit.HOURS),
-                                Instant.now()
-                            )
-                        )
-                    )
-                    heartRate = response.records.lastOrNull()?.samples?.lastOrNull()?.beatsPerMinute?.toInt()
-                } else {
-                    android.util.Log.w("VitalsReader", "Health Connect SDK not available (status=$sdkStatus). Install or enable Health Connect on this watch.")
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("VitalsReader", "Health Connect read failed: ${e.message}")
-            }
-        }
+        val heartRate = if (canReadHeartRate) {
+            readSingleValue(Sensor.TYPE_HEART_RATE, timeoutMs = 10000L) { it > 20f }
+        } else {
+            null
+        }?.roundToIntSafe()
         val ambientLux = readSingleValue(Sensor.TYPE_LIGHT, timeoutMs = 1200L)
         val pressure = readSingleValue(Sensor.TYPE_PRESSURE, timeoutMs = 1200L)
         val steps = if (canReadSteps) {
@@ -88,7 +70,11 @@ class VitalsReader(private val context: Context) {
         )
     }
 
-    private suspend fun readSingleValue(sensorType: Int, timeoutMs: Long): Float? =
+    private suspend fun readSingleValue(
+        sensorType: Int,
+        timeoutMs: Long,
+        validator: ((Float) -> Boolean)? = null
+    ): Float? =
         suspendCancellableCoroutine { cont ->
             val sensor = sensorManager.getDefaultSensor(sensorType)
             if (sensor == null) {
@@ -98,8 +84,11 @@ class VitalsReader(private val context: Context) {
 
             val listener = object : SensorEventListener {
                 override fun onSensorChanged(event: SensorEvent) {
-                    sensorManager.unregisterListener(this)
-                    if (cont.isActive) cont.resume(event.values.firstOrNull())
+                    val value = event.values.firstOrNull()
+                    if (value != null && (validator == null || validator(value))) {
+                        sensorManager.unregisterListener(this)
+                        if (cont.isActive) cont.resume(value)
+                    }
                 }
                 override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
             }

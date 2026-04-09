@@ -1,6 +1,7 @@
 package com.thinkoff.clawwatch
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
@@ -28,27 +29,39 @@ class HealthConnectManager(context: Context) {
     // Use applicationContext to avoid lifecycle issues on Wear OS
     private val appContext = context.applicationContext
 
-    @Volatile
-    private var sdkUnavailable = false
-
     fun isAvailable(): Boolean {
-        if (sdkUnavailable) return false
+        // On API 34+, Health Connect is a platform module — getSdkStatus can be unreliable.
+        // Just check if the system has it.
+        if (Build.VERSION.SDK_INT >= 34) return true
         return try {
             val status = HealthConnectClient.getSdkStatus(appContext)
             status == HealthConnectClient.SDK_AVAILABLE
         } catch (e: Exception) {
             Log.w(TAG, "SDK status check failed: ${e.message}")
-            sdkUnavailable = true
             false
         }
     }
 
     val healthConnectClient: HealthConnectClient? by lazy {
+        // Try platform provider first (API 34+), then Google's package
+        val providers = listOf(
+            "com.android.healthconnect.controller",
+            "com.google.android.apps.healthdata"
+        )
+        for (provider in providers) {
+            try {
+                val client = HealthConnectClient.getOrCreate(appContext, provider)
+                Log.i(TAG, "HealthConnectClient created with provider: $provider")
+                return@lazy client
+            } catch (e: Exception) {
+                Log.w(TAG, "HC provider $provider failed: ${e.message}")
+            }
+        }
+        // Last resort: default
         try {
-            if (isAvailable()) HealthConnectClient.getOrCreate(appContext) else null
+            HealthConnectClient.getOrCreate(appContext)
         } catch (e: Exception) {
-            Log.w(TAG, "HealthConnectClient creation failed: ${e.message}")
-            sdkUnavailable = true
+            Log.w(TAG, "HealthConnectClient creation failed entirely: ${e.message}")
             null
         }
     }
