@@ -19,23 +19,39 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-class HealthConnectManager(private val context: Context) {
+class HealthConnectManager(context: Context) {
 
     companion object {
         private const val TAG = "HealthConnect"
     }
 
+    // Use applicationContext to avoid lifecycle issues on Wear OS
+    private val appContext = context.applicationContext
+
+    @Volatile
+    private var sdkUnavailable = false
+
     fun isAvailable(): Boolean {
+        if (sdkUnavailable) return false
         return try {
-            val status = HealthConnectClient.getSdkStatus(context)
+            val status = HealthConnectClient.getSdkStatus(appContext)
             status == HealthConnectClient.SDK_AVAILABLE
         } catch (e: Exception) {
             Log.w(TAG, "SDK status check failed: ${e.message}")
+            sdkUnavailable = true
             false
         }
     }
 
-    val healthConnectClient by lazy { HealthConnectClient.getOrCreate(context) }
+    val healthConnectClient: HealthConnectClient? by lazy {
+        try {
+            if (isAvailable()) HealthConnectClient.getOrCreate(appContext) else null
+        } catch (e: Exception) {
+            Log.w(TAG, "HealthConnectClient creation failed: ${e.message}")
+            sdkUnavailable = true
+            null
+        }
+    }
 
     val permissions = setOf(
         HealthPermission.getReadPermission(HeartRateRecord::class),
@@ -48,7 +64,7 @@ class HealthConnectManager(private val context: Context) {
     suspend fun hasAllPermissions(): Boolean {
         if (!isAvailable()) return false
         return try {
-            healthConnectClient.permissionController.getGrantedPermissions().containsAll(permissions)
+            healthConnectClient?.permissionController?.getGrantedPermissions()?.containsAll(permissions) ?: false
         } catch (e: Exception) {
             Log.w(TAG, "Permission check failed: ${e.message}")
             false
@@ -115,7 +131,7 @@ class HealthConnectManager(private val context: Context) {
                 recordType = SleepSessionRecord::class,
                 timeRangeFilter = timeRange
             )
-            val sleepResponse = healthConnectClient.readRecords(sleepRequest)
+            val sleepResponse = healthConnectClient!!.readRecords(sleepRequest)
             val lastSleep = sleepResponse.records.lastOrNull()
                 ?: return@withContext "No sleep data recorded in the last 36 hours."
 
@@ -222,7 +238,7 @@ class HealthConnectManager(private val context: Context) {
                 recordType = StepsRecord::class,
                 timeRangeFilter = timeRange
             )
-            val response = healthConnectClient.readRecords(request)
+            val response = healthConnectClient!!.readRecords(request)
             val total = response.records.sumOf { it.count }
             if (total > 0) total else null
         } catch (e: Exception) {
@@ -237,7 +253,7 @@ class HealthConnectManager(private val context: Context) {
                 recordType = HeartRateRecord::class,
                 timeRangeFilter = timeRange
             )
-            val response = healthConnectClient.readRecords(request)
+            val response = healthConnectClient!!.readRecords(request)
             response.records.lastOrNull()?.samples?.lastOrNull()?.beatsPerMinute
         } catch (e: Exception) {
             Log.w(TAG, "HR read failed: ${e.message}")
@@ -251,7 +267,7 @@ class HealthConnectManager(private val context: Context) {
                 recordType = HeartRateVariabilityRmssdRecord::class,
                 timeRangeFilter = timeRange
             )
-            val response = healthConnectClient.readRecords(request)
+            val response = healthConnectClient!!.readRecords(request)
             response.records.lastOrNull()?.heartRateVariabilityMillis?.toInt()
         } catch (e: Exception) {
             Log.w(TAG, "HRV read failed: ${e.message}")
@@ -268,7 +284,7 @@ class HealthConnectManager(private val context: Context) {
                 recordType = SleepSessionRecord::class,
                 timeRangeFilter = timeRange
             )
-            val response = healthConnectClient.readRecords(request)
+            val response = healthConnectClient!!.readRecords(request)
             val lastSleep = response.records.lastOrNull() ?: return null
             val duration = Duration.between(lastSleep.startTime, lastSleep.endTime)
             val hours = duration.toHours()
@@ -287,7 +303,7 @@ class HealthConnectManager(private val context: Context) {
                 recordType = ExerciseSessionRecord::class,
                 timeRangeFilter = timeRange
             )
-            val response = healthConnectClient.readRecords(request)
+            val response = healthConnectClient!!.readRecords(request)
             val sessions = response.records
             if (sessions.isEmpty()) return null
 

@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.thinkoff.clawwatch"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.thinkoff.clawwatch"
@@ -79,5 +79,5 @@ dependencies {
     implementation(libs.security.crypto)
 
     // Health Connect
-    implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha10")
 }
