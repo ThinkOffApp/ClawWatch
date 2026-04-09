@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var dayPhaseManager: DayPhaseManager
     private lateinit var vitalsReader: VitalsReader
     private lateinit var watchPushRegistrar: WatchPushRegistrar
+    private var intentAdapter: WatchIntentAdapter? = null
     private val prefs by lazy { SecurePrefs.watch(this) }
 
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
@@ -226,6 +227,14 @@ class MainActivity : AppCompatActivity() {
         applyDayPhaseAppearance(dayPhaseManager.snapshotNow())
         ensureNotificationPermission()
         handleAlertOpenIntent(intent)
+
+        intentAdapter = WatchIntentAdapter(this, prefs, lifecycleScope)
+        intentAdapter?.start(
+            initialState = "idle",
+            screenActive = true,
+            batteryPct = getBatteryPercentage(),
+            lowBattery = isLowBattery()
+        )
 
         lifecycleScope.launch {
             watchPushRegistrar
@@ -1140,6 +1149,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setState(s: State) {
         state = s
+        intentAdapter?.onStateChanged(
+            state = s.name.lowercase(),
+            screenActive = true,
+            batteryPct = getBatteryPercentage(),
+            lowBattery = isLowBattery()
+        )
         runOnUiThread {
             if (s != State.SPEAKING) {
                 speechAudioStarted = false

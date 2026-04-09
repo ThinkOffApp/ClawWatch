@@ -628,7 +628,7 @@ class ClawRunner(private val context: Context) {
                 val firstBody = JSONObject().apply {
                     put("model", getModel())
                     put("max_tokens", getMaxTokens() + 200) // extra tokens for tool call
-                    put("system", getSystemPrompt())
+                    put("system", buildCachedSystem(getSystemPrompt()))
                     put("tools", tools)
                     put("messages", buildMessagesWithContext(prompt))
                 }.toString()
@@ -676,7 +676,7 @@ class ClawRunner(private val context: Context) {
                 val secondBody = JSONObject().apply {
                     put("model", getModel())
                     put("max_tokens", getMaxTokens())
-                    put("system", getSystemPrompt())
+                    put("system", buildCachedSystem(getSystemPrompt()))
                     put("tools", tools)
                     val historyWithTool = buildMessagesWithContext(prompt).apply {
                         // Claude's response with tool call
@@ -730,6 +730,7 @@ class ClawRunner(private val context: Context) {
             conn.setRequestProperty("Content-Type", "application/json")
             conn.setRequestProperty("x-api-key", apiKey)
             conn.setRequestProperty("anthropic-version", "2023-06-01")
+            conn.setRequestProperty("anthropic-beta", "prompt-caching-2024-07-31")
             conn.connectTimeout = 30_000
             conn.readTimeout = 30_000
             conn.doOutput = true
@@ -765,7 +766,7 @@ class ClawRunner(private val context: Context) {
         val body = JSONObject().apply {
             put("model", model)
             put("max_tokens", maxTokens)
-            put("system", systemPrompt)
+            put("system", buildCachedSystem(systemPrompt))
             put("messages", buildMessagesWithContext(userMessage))
         }.toString()
 
@@ -783,6 +784,18 @@ class ClawRunner(private val context: Context) {
             Result.success(text)
         } catch (e: Exception) {
             Result.failure(RuntimeException("Failed to parse response: ${e.message}"))
+        }
+    }
+
+    private fun buildCachedSystem(prompt: String): JSONArray {
+        return JSONArray().apply {
+            put(JSONObject().apply {
+                put("type", "text")
+                put("text", prompt)
+                put("cache_control", JSONObject().apply {
+                    put("type", "ephemeral")
+                })
+            })
         }
     }
 
