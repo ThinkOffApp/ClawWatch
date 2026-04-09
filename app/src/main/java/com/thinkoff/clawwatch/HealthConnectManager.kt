@@ -57,27 +57,45 @@ class HealthConnectManager(context: Context) {
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(SleepSessionRecord::class),
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
-        HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class)
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class)
     )
 
-    suspend fun hasAllPermissions(): Boolean {
-        if (!isAvailable()) return false
+    // HRV permission may not exist on all firmware — request separately, don't require
+    private val optionalPermissions: Set<String> by lazy {
+        try {
+            setOf(HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class))
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+
+    val allRequestablePermissions: Set<String> get() = permissions + optionalPermissions
+
+    private suspend fun getGrantedPermissions(): Set<String> {
+        if (!isAvailable()) return emptySet()
         return try {
-            healthConnectClient?.permissionController?.getGrantedPermissions()?.containsAll(permissions) ?: false
+            healthConnectClient?.permissionController?.getGrantedPermissions() ?: emptySet()
         } catch (e: Exception) {
             Log.w(TAG, "Permission check failed: ${e.message}")
-            false
+            emptySet()
         }
+    }
+
+    suspend fun hasAllPermissions(): Boolean {
+        return getGrantedPermissions().containsAll(permissions)
+    }
+
+    suspend fun hasAnyPermission(): Boolean {
+        return getGrantedPermissions().any { it in permissions }
     }
 
     /**
      * Main health summary — injected into LLM system prompt on every query.
-     * Returns a concise, spoken-friendly string.
+     * Reads whatever data we have permission for.
      */
     suspend fun readRecentHealthData(): String = withContext(Dispatchers.IO) {
         if (!isAvailable()) return@withContext "Health Connect not available on this watch."
-        if (!hasAllPermissions()) return@withContext "Health Connect permissions not granted."
+        if (!hasAnyPermission()) return@withContext "Health Connect permissions not granted."
 
         val now = Instant.now()
         val last24h = now.minus(24, ChronoUnit.HOURS)
@@ -120,7 +138,7 @@ class HealthConnectManager(context: Context) {
      */
     suspend fun readSleepSummary(): String = withContext(Dispatchers.IO) {
         if (!isAvailable()) return@withContext "Health Connect not available."
-        if (!hasAllPermissions()) return@withContext "Health Connect permissions not granted."
+        if (!hasAnyPermission()) return@withContext "Health Connect permissions not granted."
 
         try {
             val now = Instant.now()
@@ -177,7 +195,7 @@ class HealthConnectManager(context: Context) {
      */
     suspend fun readHealthSnapshot(): String = withContext(Dispatchers.IO) {
         if (!isAvailable()) return@withContext "Health Connect is not available on this watch."
-        if (!hasAllPermissions()) return@withContext "I need Health Connect permissions first."
+        if (!hasAnyPermission()) return@withContext "I need Health Connect permissions first."
 
         val now = Instant.now()
         val last24h = now.minus(24, ChronoUnit.HOURS)

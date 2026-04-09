@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity() {
     private val requestHealthConnectPermissions = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) { granted ->
-        if (granted.containsAll(healthConnectManager.permissions)) {
+        if (granted.containsAll(healthConnectManager.allRequestablePermissions)) {
             Log.i(TAG, "Health Connect permissions granted")
         } else {
             Log.w(TAG, "Health Connect permissions partially denied: $granted")
@@ -616,7 +616,7 @@ class MainActivity : AppCompatActivity() {
         setState(State.THINKING)
         setStatus(if (command == LocalCommandType.SLEEP_SUMMARY) "Checking sleep…" else "Checking health…")
         queryJob = lifecycleScope.launch {
-            if (!healthConnectManager.hasAllPermissions()) {
+            if (!healthConnectManager.hasAnyPermission()) {
                 val response = "Opening Health Connect permissions now."
                 binding.responseText.text = response
                 speakLocalResponse(response, token)
@@ -637,7 +637,7 @@ class MainActivity : AppCompatActivity() {
     private fun openHealthConnectPermissions() {
         // Try the standard permission contract first
         try {
-            requestHealthConnectPermissions.launch(healthConnectManager.permissions)
+            requestHealthConnectPermissions.launch(healthConnectManager.allRequestablePermissions)
             return
         } catch (e: Exception) {
             Log.w(TAG, "Permission contract failed: ${e.message}")
@@ -672,7 +672,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         lifecycleScope.launch {
-            if (!healthConnectManager.hasAllPermissions()) {
+            if (!healthConnectManager.hasAnyPermission()) {
                 Log.i(TAG, "Requesting Health Connect permissions")
                 openHealthConnectPermissions()
             } else {
