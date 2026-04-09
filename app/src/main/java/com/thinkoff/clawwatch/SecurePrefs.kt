@@ -96,7 +96,7 @@ object SecurePrefs {
         Log.i(TAG, "Migrated legacy watch prefs to encrypted storage")
     }
 
-    /** Migrate old antfarm_*/clawhub_* keys to groupmind_* within encrypted prefs. */
+    /** Migrate old antfarm/clawhub keys to groupmind within encrypted prefs. */
     private fun migrateRenamedKeys(secure: SharedPreferences) {
         val editor = secure.edit()
         var changed = false
