@@ -617,10 +617,10 @@ class MainActivity : AppCompatActivity() {
         setStatus(if (command == LocalCommandType.SLEEP_SUMMARY) "Checking sleep…" else "Checking health…")
         queryJob = lifecycleScope.launch {
             if (!healthConnectManager.hasAllPermissions()) {
-                val response = "I need Health Connect permissions first. Please grant them in settings."
+                val response = "Opening Health Connect permissions now."
                 binding.responseText.text = response
                 speakLocalResponse(response, token)
-                requestHealthConnectPermissions.launch(healthConnectManager.permissions)
+                openHealthConnectPermissions()
                 return@launch
             }
             val response = when (command) {
@@ -634,6 +634,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun openHealthConnectPermissions() {
+        // Try the standard permission contract first
+        try {
+            requestHealthConnectPermissions.launch(healthConnectManager.permissions)
+            return
+        } catch (e: Exception) {
+            Log.w(TAG, "Permission contract failed: ${e.message}")
+        }
+
+        // Fallback: open HC app permission management for our package directly
+        val intents = listOf(
+            Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS").apply {
+                putExtra(Intent.EXTRA_PACKAGE_NAME, packageName)
+            },
+            Intent("android.health.connect.action.HEALTH_HOME_SETTINGS"),
+            Intent().setClassName(
+                "com.android.healthconnect.controller",
+                "com.android.healthconnect.controller.HealthConnectActivity"
+            )
+        )
+        for (intent in intents) {
+            try {
+                startActivity(intent)
+                Log.i(TAG, "Opened HC settings via ${intent.action ?: intent.component}")
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "HC intent failed: ${intent.action ?: intent.component}: ${e.message}")
+            }
+        }
+        Log.e(TAG, "Could not open Health Connect settings at all")
+    }
+
     private fun requestHealthConnectIfNeeded() {
         if (!healthConnectManager.isAvailable()) {
             Log.i(TAG, "Health Connect SDK not available on this watch")
@@ -642,7 +674,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             if (!healthConnectManager.hasAllPermissions()) {
                 Log.i(TAG, "Requesting Health Connect permissions")
-                requestHealthConnectPermissions.launch(healthConnectManager.permissions)
+                openHealthConnectPermissions()
             } else {
                 Log.i(TAG, "Health Connect permissions already granted")
             }
