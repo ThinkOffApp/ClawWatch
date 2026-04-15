@@ -11,6 +11,7 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 
 /**
@@ -64,6 +65,9 @@ class ClawRunner(private val context: Context) {
 
         private const val MAX_CONTEXT_MESSAGES = 10
         private const val MAX_CONTEXT_CHARS_PER_MESSAGE = 600
+        private const val NULLCLAW_TIMEOUT_MS = 60_000L
+        private const val NULLCLAW_FAILURE_COOLDOWN_QUERIES = 3
+        private const val NULLCLAW_STDERR_LIMIT_CHARS = 4_000
     }
 
     private data class ChatTurn(val role: String, val content: String)
@@ -87,6 +91,10 @@ class ClawRunner(private val context: Context) {
     private val conversation = ArrayDeque<ChatTurn>()
     @Volatile
     private var conversationConfigFingerprint: String? = null
+    @Volatile
+    private var nullClawCooldownRemaining = 0
+    @Volatile
+    private var nullClawLastFailureReason: String? = null
 
     // ── Config accessors ─────────────────────────────────────────────────────
 
@@ -446,8 +454,15 @@ class ClawRunner(private val context: Context) {
 
     private suspend fun queryWithNullClaw(prompt: String, apiKey: String): Result<String> =
         withContext(Dispatchers.IO) {
+            consumeNullClawCooldown()?.let { reason ->
+                Log.i(TAG, "Skipping NullClaw during cooldown: $reason")
+                return@withContext Result.failure(RuntimeException("NullClaw cooldown active: $reason"))
+            }
+
             if (!binaryFile.exists()) {
-                return@withContext Result.failure(RuntimeException("NullClaw binary missing"))
+                val reason = "NullClaw binary missing"
+                recordNullClawFailure(reason)
+                return@withContext Result.failure(RuntimeException(reason))
             }
 
             writeNullclawHomeConfig(apiKey)
@@ -479,35 +494,86 @@ class ClawRunner(private val context: Context) {
                 var output = ""
                 var error = ""
                 val stdoutThread = Thread { output = process.inputStream.bufferedReader().readText() }
-                val stderrThread = Thread { error = process.errorStream.bufferedReader().readText() }
+                val stderrThread = Thread { error = readTextWithLimit(process.errorStream, NULLCLAW_STDERR_LIMIT_CHARS) }
                 stdoutThread.start()
                 stderrThread.start()
-                val exit = process.waitFor()
+
+                if (!process.waitFor(NULLCLAW_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                    process.destroy()
+                    if (!process.waitFor(2, TimeUnit.SECONDS)) {
+                        process.destroyForcibly()
+                    }
+                    stdoutThread.join(1_000)
+                    stderrThread.join(1_000)
+                    val reason = "NullClaw timed out after ${NULLCLAW_TIMEOUT_MS / 1000}s"
+                    recordNullClawFailure(reason)
+                    return@withContext Result.failure(RuntimeException(reason))
+                }
+
+                val exit = process.exitValue()
                 stdoutThread.join()
                 stderrThread.join()
 
                 Log.i(TAG, "NullClaw exit=$exit output='${output.take(120)}' stderr='${error.take(200)}'")
 
                 if (exit != 0) {
-                    return@withContext Result.failure(
-                        RuntimeException(error.ifBlank { "NullClaw exited with code $exit" }.take(240))
-                    )
+                    val reason = error.ifBlank { "NullClaw exited with code $exit" }.take(240)
+                    recordNullClawFailure(reason)
+                    return@withContext Result.failure(RuntimeException(reason))
                 }
 
                 val text = output.trim()
                 if (text.isBlank()) {
-                    return@withContext Result.failure(RuntimeException("NullClaw returned empty output"))
+                    val reason = "NullClaw returned empty output"
+                    recordNullClawFailure(reason)
+                    return@withContext Result.failure(RuntimeException(reason))
                 }
 
                 appendConversation("user", prompt)
                 appendConversation("assistant", text)
+                clearNullClawFailure()
                 Result.success(text)
             } catch (e: Exception) {
+                recordNullClawFailure(e.message ?: e.javaClass.simpleName)
                 Result.failure(e)
             } finally {
                 curlBridge.close()
             }
         }
+
+    private fun consumeNullClawCooldown(): String? = synchronized(this) {
+        if (nullClawCooldownRemaining <= 0) return@synchronized null
+        nullClawCooldownRemaining -= 1
+        nullClawLastFailureReason ?: "recent NullClaw failure"
+    }
+
+    private fun recordNullClawFailure(reason: String) = synchronized(this) {
+        nullClawCooldownRemaining = NULLCLAW_FAILURE_COOLDOWN_QUERIES
+        nullClawLastFailureReason = reason
+    }
+
+    private fun clearNullClawFailure() = synchronized(this) {
+        nullClawCooldownRemaining = 0
+        nullClawLastFailureReason = null
+    }
+
+    private fun readTextWithLimit(stream: java.io.InputStream, maxChars: Int): String {
+        val reader = stream.bufferedReader()
+        val buf = CharArray(1024)
+        val out = StringBuilder()
+        while (true) {
+            val read = reader.read(buf)
+            if (read <= 0) break
+            val remaining = maxChars - out.length
+            if (remaining <= 0) break
+            out.append(buf, 0, minOf(read, remaining))
+        }
+        if (reader.read() != -1) {
+            out.append("\n...[stderr truncated]")
+        }
+        reader.close()
+        return out.toString()
+    }
 
     suspend fun summarizeFamilyStatus(): Result<String> = withContext(Dispatchers.IO) {
         val groupMindKey = getGroupMindKey()

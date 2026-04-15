@@ -2,10 +2,10 @@ package com.thinkoff.clawwatch
 
 import android.util.Log
 import java.io.File
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.GZIPInputStream
 
 /**
@@ -23,16 +23,17 @@ internal class NullClawCurlBridge(
     companion object {
         private const val TAG = "NullClawCurlBridge"
         private const val POLL_INTERVAL_MS = 50L
+        private val NEXT_BRIDGE_ID = AtomicInteger(1)
     }
 
-    private val bridgeDir = File(filesDir, ".nullclaw-curl-bridge")
+    private val bridgeRoot = File(filesDir, ".nullclaw-curl-bridge")
+    private val bridgeDir = File(bridgeRoot, "req-${NEXT_BRIDGE_ID.getAndIncrement()}")
     private val curlShim = File(filesDir, "curl")
     private val running = AtomicBoolean(false)
     private var worker: Thread? = null
 
     fun prepare() {
         bridgeDir.mkdirs()
-        bridgeDir.listFiles()?.forEach { it.delete() }
         writeCurlShim()
     }
 
@@ -71,6 +72,8 @@ internal class NullClawCurlBridge(
             worker?.join(500)
         } catch (_: InterruptedException) {
         }
+        bridgeDir.listFiles()?.forEach { it.delete() }
+        bridgeDir.delete()
     }
 
     private fun writeCurlShim() {
@@ -122,7 +125,7 @@ internal class NullClawCurlBridge(
             val args = requestFile.readLines()
             val parsed = parseCurlArgs(args)
             val result = execute(parsed)
-            stdoutFile.writeText(result.stdout)
+            stdoutFile.writeBytes(result.stdout)
             stderrFile.writeText(result.stderr)
             statusFile.writeText(result.exitCode.toString())
         } catch (e: Exception) {
@@ -144,12 +147,13 @@ internal class NullClawCurlBridge(
         val readTimeoutMs: Int,
         val failOnHttpError: Boolean,
         val failWithBody: Boolean,
-        val outputFile: String?
+        val outputFile: String?,
+        val warnings: List<String>
     )
 
     private data class CurlResult(
         val exitCode: Int,
-        val stdout: String,
+        val stdout: ByteArray,
         val stderr: String
     )
 
@@ -163,6 +167,7 @@ internal class NullClawCurlBridge(
         var failOnHttpError = false
         var failWithBody = false
         var outputFile: String? = null
+        val warnings = mutableListOf<String>()
 
         fun readDataArg(value: String): ByteArray {
             if (value.startsWith("@")) {
@@ -192,8 +197,18 @@ internal class NullClawCurlBridge(
                     i += 2
                 }
                 "-d", "--data", "--data-raw", "--data-binary" -> {
-                    body = readDataArg(args.getOrNull(i + 1).orEmpty())
+                    val value = args.getOrNull(i + 1).orEmpty()
+                    if (value == "@-") {
+                        throw UnsupportedOperationException("curl bridge does not support stdin request bodies (@-)")
+                    }
+                    body = readDataArg(value)
                     if (method == "GET") method = "POST"
+                    i += 2
+                }
+                "--data-urlencode", "-F", "--form", "-u", "--user", "-G", "-T", "--upload-file" -> {
+                    val warning = "curl bridge encountered unsupported argument '$arg'"
+                    warnings += warning
+                    Log.w(TAG, warning)
                     i += 2
                 }
                 "--connect-timeout" -> {
@@ -226,6 +241,10 @@ internal class NullClawCurlBridge(
                 else -> {
                     if (arg.startsWith("http://") || arg.startsWith("https://")) {
                         url = arg
+                    } else if (arg.startsWith("-")) {
+                        val warning = "curl bridge ignoring unrecognized argument '$arg'"
+                        warnings += warning
+                        Log.w(TAG, warning)
                     }
                     i += 1
                 }
@@ -241,7 +260,8 @@ internal class NullClawCurlBridge(
             readTimeoutMs = readTimeoutMs,
             failOnHttpError = failOnHttpError,
             failWithBody = failWithBody,
-            outputFile = outputFile
+            outputFile = outputFile,
+            warnings = warnings
         )
     }
 
@@ -265,23 +285,27 @@ internal class NullClawCurlBridge(
         if (targetFile != null) {
             val outFile = if (File(targetFile).isAbsolute) File(targetFile) else File(filesDir, targetFile)
             outFile.parentFile?.mkdirs()
-            outFile.writeText(responseBody)
+            outFile.writeBytes(responseBody)
         }
 
         val exitCode = if (responseCode !in 200..299 && request.failOnHttpError) 22 else 0
-        val stdout = if (targetFile == null && (responseCode in 200..299 || request.failWithBody)) responseBody else ""
-        val stderr = if (responseCode !in 200..299 && !request.failWithBody) responseBody else ""
+        val stdout = if (targetFile == null && (responseCode in 200..299 || request.failWithBody)) responseBody else ByteArray(0)
+        val stderrBody = if (responseCode !in 200..299 && !request.failWithBody) responseBody.decodeToString() else ""
+        val stderr = buildString {
+            request.warnings.forEach { append(it).append('\n') }
+            append(stderrBody)
+        }.trimEnd()
         return CurlResult(exitCode = exitCode, stdout = stdout, stderr = stderr)
     }
 
-    private fun readBody(conn: HttpURLConnection, success: Boolean): String {
+    private fun readBody(conn: HttpURLConnection, success: Boolean): ByteArray {
         val stream = if (success) conn.inputStream else conn.errorStream
-        if (stream == null) return ""
+        if (stream == null) return ByteArray(0)
         val encoding = conn.contentEncoding?.lowercase()
         return if (encoding == "gzip") {
-            GZIPInputStream(stream).bufferedReader().use { it.readText() }
+            GZIPInputStream(stream).use { it.readBytes() }
         } else {
-            stream.bufferedReader().use { it.readText() }
+            stream.use { it.readBytes() }
         }
     }
 }
