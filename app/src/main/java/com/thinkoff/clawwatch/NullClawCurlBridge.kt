@@ -85,11 +85,13 @@ internal class NullClawCurlBridge(
             REQ_ID="${'$'}PPID-${'$'}${'$'}"
             TMP_FILE="${'$'}BRIDGE_DIR/.req-${'$'}REQ_ID.txt"
             READY_FILE="${'$'}BRIDGE_DIR/ready-${'$'}REQ_ID.txt"
+            BODY_FILE="${'$'}BRIDGE_DIR/body-${'$'}REQ_ID.bin"
             OUT_FILE="${'$'}BRIDGE_DIR/stdout-${'$'}REQ_ID.txt"
             ERR_FILE="${'$'}BRIDGE_DIR/stderr-${'$'}REQ_ID.txt"
             STATUS_FILE="${'$'}BRIDGE_DIR/status-${'$'}REQ_ID.txt"
             
             : > "${'$'}TMP_FILE"
+            cat > "${'$'}BODY_FILE"
             for arg in "${'$'}@"; do
               printf '%s\n' "${'$'}arg" >> "${'$'}TMP_FILE"
             done
@@ -107,7 +109,7 @@ internal class NullClawCurlBridge(
             fi
             
             CODE=$(cat "${'$'}STATUS_FILE" 2>/dev/null || echo 1)
-            rm -f "${'$'}READY_FILE" "${'$'}OUT_FILE" "${'$'}ERR_FILE" "${'$'}STATUS_FILE"
+            rm -f "${'$'}READY_FILE" "${'$'}BODY_FILE" "${'$'}OUT_FILE" "${'$'}ERR_FILE" "${'$'}STATUS_FILE"
             exit "${'$'}CODE"
         """.trimIndent()
 
@@ -117,13 +119,15 @@ internal class NullClawCurlBridge(
 
     private fun handleRequest(requestFile: File) {
         val requestId = requestFile.name.removePrefix("ready-").removeSuffix(".txt")
+        val bodyFile = File(bridgeDir, "body-$requestId.bin")
         val stdoutFile = File(bridgeDir, "stdout-$requestId.txt")
         val stderrFile = File(bridgeDir, "stderr-$requestId.txt")
         val statusFile = File(bridgeDir, "status-$requestId.txt")
 
         try {
             val args = requestFile.readLines()
-            val parsed = parseCurlArgs(args)
+            Log.i(TAG, "Handling curl bridge request $requestId argv=${args.joinToString(" ").take(400)}")
+            val parsed = parseCurlArgs(args, bodyFile)
             val result = execute(parsed)
             stdoutFile.writeBytes(result.stdout)
             stderrFile.writeText(result.stderr)
@@ -135,6 +139,7 @@ internal class NullClawCurlBridge(
             statusFile.writeText("1")
         } finally {
             requestFile.delete()
+            bodyFile.delete()
         }
     }
 
@@ -157,7 +162,7 @@ internal class NullClawCurlBridge(
         val stderr: String
     )
 
-    private fun parseCurlArgs(args: List<String>): CurlRequest {
+    private fun parseCurlArgs(args: List<String>, stdinBodyFile: File): CurlRequest {
         var method = "GET"
         var url: String? = null
         val headers = mutableListOf<Pair<String, String>>()
@@ -198,10 +203,11 @@ internal class NullClawCurlBridge(
                 }
                 "-d", "--data", "--data-raw", "--data-binary" -> {
                     val value = args.getOrNull(i + 1).orEmpty()
-                    if (value == "@-") {
-                        throw UnsupportedOperationException("curl bridge does not support stdin request bodies (@-)")
+                    body = if (value == "@-") {
+                        stdinBodyFile.takeIf { it.exists() }?.readBytes() ?: ByteArray(0)
+                    } else {
+                        readDataArg(value)
                     }
-                    body = readDataArg(value)
                     if (method == "GET") method = "POST"
                     i += 2
                 }
