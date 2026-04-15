@@ -130,6 +130,8 @@ class ClawRunner(private val context: Context) {
         }
         buildCaBundle()
         migrateDefaultPromptIfNeeded()
+        getApiKey()?.let { writeNullclawHomeConfig(it) }
+        writeRuntimeConfig()
         Log.i(TAG, "ClawRunner ready, home=${homeDir.absolutePath}, rag=${getRagMode()}")
     }
 
@@ -156,6 +158,37 @@ class ClawRunner(private val context: Context) {
             caBundleFile.writeText(bundle.toString())
             Log.i(TAG, "CA bundle written (${bundle.length} bytes)")
         }
+    }
+
+    private fun writeNullclawHomeConfig(apiKey: String) {
+        nullclawConfigFile.parentFile?.mkdirs()
+        val primaryModel = getModel().let { if (it.contains("/")) it else "anthropic/$it" }
+        val payload = JSONObject().apply {
+            put("agents", JSONObject().apply {
+                put("defaults", JSONObject().apply {
+                    put("model", JSONObject().apply {
+                        put("primary", primaryModel)
+                    })
+                })
+            })
+            put("providers", JSONObject().apply {
+                put("anthropic", JSONObject().apply {
+                    put("api_key", apiKey)
+                })
+            })
+        }
+        nullclawConfigFile.writeText(payload.toString(2))
+    }
+
+    private fun writeRuntimeConfig() {
+        val payload = JSONObject().apply {
+            put("provider", "anthropic")
+            put("model", getModel())
+            put("max_tokens", getMaxTokens())
+            put("system", getSystemPrompt())
+        }
+        configFile.parentFile?.mkdirs()
+        configFile.writeText(payload.toString(2))
     }
 
     // ── RAG: web search ───────────────────────────────────────────────────────
@@ -393,6 +426,16 @@ class ClawRunner(private val context: Context) {
         clearConversationIfConfigChanged(ragMode)
         Log.i(TAG, "Query: '${prompt.take(60)}' rag=$ragMode")
 
+        val nullClawResult = queryWithNullClaw(prompt, apiKey)
+        if (nullClawResult.isSuccess) {
+            return@withContext nullClawResult
+        }
+        Log.w(
+            TAG,
+            "NullClaw path failed, falling back to Kotlin query path",
+            nullClawResult.exceptionOrNull()
+        )
+
         return@withContext when (ragMode) {
             "opus_tool" -> queryWithOpusTool(prompt, apiKey)
             "always"    -> queryWithKotlinRag(prompt, apiKey, forceSearch = true)
@@ -400,6 +443,71 @@ class ClawRunner(private val context: Context) {
             else        -> queryDirect(prompt, apiKey)
         }
     }
+
+    private suspend fun queryWithNullClaw(prompt: String, apiKey: String): Result<String> =
+        withContext(Dispatchers.IO) {
+            if (!binaryFile.exists()) {
+                return@withContext Result.failure(RuntimeException("NullClaw binary missing"))
+            }
+
+            writeNullclawHomeConfig(apiKey)
+            writeRuntimeConfig()
+
+            val curlBridge = NullClawCurlBridge(filesDir)
+            curlBridge.prepare()
+            curlBridge.start()
+
+            try {
+                val process = ProcessBuilder(
+                    binaryFile.absolutePath,
+                    "agent",
+                    "--message", prompt,
+                    "--output", "plain",
+                    "--config", configFile.absolutePath
+                )
+                    .directory(filesDir)
+                    .apply {
+                        environment().apply {
+                            put("ANTHROPIC_API_KEY", apiKey)
+                            put("HOME", homeDir.absolutePath)
+                            put("PATH", "${filesDir.absolutePath}:$nativeLibDir:/system/bin:/system/xbin")
+                            put("NULLCLAW_CURL_BRIDGE_DIR", curlBridge.directoryPath())
+                        }
+                    }
+                    .start()
+
+                var output = ""
+                var error = ""
+                val stdoutThread = Thread { output = process.inputStream.bufferedReader().readText() }
+                val stderrThread = Thread { error = process.errorStream.bufferedReader().readText() }
+                stdoutThread.start()
+                stderrThread.start()
+                val exit = process.waitFor()
+                stdoutThread.join()
+                stderrThread.join()
+
+                Log.i(TAG, "NullClaw exit=$exit output='${output.take(120)}' stderr='${error.take(200)}'")
+
+                if (exit != 0) {
+                    return@withContext Result.failure(
+                        RuntimeException(error.ifBlank { "NullClaw exited with code $exit" }.take(240))
+                    )
+                }
+
+                val text = output.trim()
+                if (text.isBlank()) {
+                    return@withContext Result.failure(RuntimeException("NullClaw returned empty output"))
+                }
+
+                appendConversation("user", prompt)
+                appendConversation("assistant", text)
+                Result.success(text)
+            } catch (e: Exception) {
+                Result.failure(e)
+            } finally {
+                curlBridge.close()
+            }
+        }
 
     suspend fun summarizeFamilyStatus(): Result<String> = withContext(Dispatchers.IO) {
         val groupMindKey = getGroupMindKey()
