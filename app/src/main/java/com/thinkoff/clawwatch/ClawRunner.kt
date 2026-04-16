@@ -75,8 +75,8 @@ class ClawRunner(private val context: Context) {
         private const val MAX_CONTEXT_MESSAGES = 10
         private const val MAX_CONTEXT_CHARS_PER_MESSAGE = 600
         private const val NULLCLAW_TIMEOUT_MS = 15_000L
-        private const val NULLCLAW_NONTECHNICAL_TIMEOUT_MS = 5_000L
-        private const val NULLCLAW_MAX_ACCEPTABLE_LATENCY_MS = 5_000L
+        private const val NULLCLAW_NONTECHNICAL_TIMEOUT_MS = 8_000L
+        private const val NULLCLAW_MAX_ACCEPTABLE_LATENCY_MS = 8_000L
         private const val NULLCLAW_FAILURE_COOLDOWN_QUERIES = 3
         private const val NULLCLAW_STDERR_LIMIT_CHARS = 4_000
         private const val MAX_SPOKEN_SENTENCES = 3
@@ -557,12 +557,15 @@ class ClawRunner(private val context: Context) {
 
     private suspend fun queryWithNullClaw(prompt: String, apiKey: String): Result<String> =
         withContext(Dispatchers.IO) {
-            consumeNullClawCooldown()?.let { reason ->
-                Log.i(TAG, "Skipping NullClaw during cooldown: $reason")
-                return@withContext Result.failure(RuntimeException("NullClaw cooldown active: $reason"))
-            }
             val promptLooksTechnical = promptLooksTechnical(prompt)
-            val nativeTimeoutMs = if (promptLooksTechnical) {
+            val nullClawMode = getNullClawMode()
+            if (nullClawMode != "nullclaw_only") {
+                consumeNullClawCooldown()?.let { reason ->
+                    Log.i(TAG, "Skipping NullClaw during cooldown: $reason")
+                    return@withContext Result.failure(RuntimeException("NullClaw cooldown active: $reason"))
+                }
+            }
+            val nativeTimeoutMs = if (promptLooksTechnical || nullClawMode == "nullclaw_only") {
                 NULLCLAW_TIMEOUT_MS
             } else {
                 NULLCLAW_NONTECHNICAL_TIMEOUT_MS
@@ -642,7 +645,7 @@ class ClawRunner(private val context: Context) {
                     return@withContext Result.failure(RuntimeException(reason))
                 }
 
-                val rejectionReason = nullClawRejectionReason(output, text, prompt, durationMs)
+                val rejectionReason = nullClawRejectionReason(output, text, prompt, durationMs, nullClawMode)
                 if (rejectionReason != null) {
                     recordNullClawFailure(rejectionReason)
                     return@withContext Result.failure(RuntimeException(rejectionReason))
@@ -667,7 +670,11 @@ class ClawRunner(private val context: Context) {
     }
 
     private fun recordNullClawFailure(reason: String) = synchronized(this) {
-        nullClawCooldownRemaining = NULLCLAW_FAILURE_COOLDOWN_QUERIES
+        nullClawCooldownRemaining = if (getNullClawMode() == "nullclaw_only") {
+            0
+        } else {
+            NULLCLAW_FAILURE_COOLDOWN_QUERIES
+        }
         nullClawLastFailureReason = reason
     }
 
@@ -709,14 +716,16 @@ class ClawRunner(private val context: Context) {
         raw: String,
         shaped: String,
         originalPrompt: String,
-        durationMs: Long
+        durationMs: Long,
+        nullClawMode: String
     ): String? {
         val promptLooksTechnical = promptLooksTechnical(originalPrompt)
         val normalizedRaw = raw.replace(Regex("\\s+"), " ").trim()
         val normalizedShaped = shaped.replace(Regex("\\s+"), " ").trim()
+        val fallbackAvailable = nullClawMode != "nullclaw_only"
 
         if (!promptLooksTechnical) {
-            if (durationMs > NULLCLAW_MAX_ACCEPTABLE_LATENCY_MS) {
+            if (fallbackAvailable && durationMs > NULLCLAW_MAX_ACCEPTABLE_LATENCY_MS) {
                 return "NullClaw response took ${durationMs}ms"
             }
             if (normalizedRaw.length > MAX_NONTECHNICAL_NULLCLAW_RAW_CHARS) {
