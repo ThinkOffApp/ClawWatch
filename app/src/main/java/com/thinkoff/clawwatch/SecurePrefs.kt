@@ -25,6 +25,7 @@ object SecurePrefs {
         "system_prompt",
         "max_tokens",
         "rag_mode",
+        "nullclaw_mode",
         "avatar_type"
     )
 

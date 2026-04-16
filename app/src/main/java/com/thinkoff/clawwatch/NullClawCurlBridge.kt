@@ -1,5 +1,6 @@
 package com.thinkoff.clawwatch
 
+import android.system.Os
 import android.util.Log
 import java.io.File
 import java.net.HttpURLConnection
@@ -17,7 +18,8 @@ import java.util.zip.GZIPInputStream
  * access on Wear OS.
  */
 internal class NullClawCurlBridge(
-    private val filesDir: File
+    private val filesDir: File,
+    private val shimBinary: File
 ) : AutoCloseable {
 
     companion object {
@@ -34,7 +36,7 @@ internal class NullClawCurlBridge(
 
     fun prepare() {
         bridgeDir.mkdirs()
-        writeCurlShim()
+        installCurlShim()
     }
 
     fun directoryPath(): String = bridgeDir.absolutePath
@@ -76,45 +78,10 @@ internal class NullClawCurlBridge(
         bridgeDir.delete()
     }
 
-    private fun writeCurlShim() {
-        val script = """
-            #!/system/bin/sh
-            set -eu
-            
-            BRIDGE_DIR="${'$'}{NULLCLAW_CURL_BRIDGE_DIR:?}"
-            REQ_ID="${'$'}PPID-${'$'}${'$'}"
-            TMP_FILE="${'$'}BRIDGE_DIR/.req-${'$'}REQ_ID.txt"
-            READY_FILE="${'$'}BRIDGE_DIR/ready-${'$'}REQ_ID.txt"
-            BODY_FILE="${'$'}BRIDGE_DIR/body-${'$'}REQ_ID.bin"
-            OUT_FILE="${'$'}BRIDGE_DIR/stdout-${'$'}REQ_ID.txt"
-            ERR_FILE="${'$'}BRIDGE_DIR/stderr-${'$'}REQ_ID.txt"
-            STATUS_FILE="${'$'}BRIDGE_DIR/status-${'$'}REQ_ID.txt"
-            
-            : > "${'$'}TMP_FILE"
-            cat > "${'$'}BODY_FILE"
-            for arg in "${'$'}@"; do
-              printf '%s\n' "${'$'}arg" >> "${'$'}TMP_FILE"
-            done
-            mv "${'$'}TMP_FILE" "${'$'}READY_FILE"
-            
-            while [ ! -f "${'$'}STATUS_FILE" ]; do
-              sleep 0.1
-            done
-            
-            if [ -f "${'$'}OUT_FILE" ]; then
-              cat "${'$'}OUT_FILE"
-            fi
-            if [ -f "${'$'}ERR_FILE" ]; then
-              cat "${'$'}ERR_FILE" >&2
-            fi
-            
-            CODE=$(cat "${'$'}STATUS_FILE" 2>/dev/null || echo 1)
-            rm -f "${'$'}READY_FILE" "${'$'}BODY_FILE" "${'$'}OUT_FILE" "${'$'}ERR_FILE" "${'$'}STATUS_FILE"
-            exit "${'$'}CODE"
-        """.trimIndent()
-
-        curlShim.writeText(script)
-        curlShim.setExecutable(true)
+    private fun installCurlShim() {
+        require(shimBinary.exists()) { "curl shim binary missing at ${shimBinary.absolutePath}" }
+        curlShim.delete()
+        Os.symlink(shimBinary.absolutePath, curlShim.absolutePath)
     }
 
     private fun handleRequest(requestFile: File) {
