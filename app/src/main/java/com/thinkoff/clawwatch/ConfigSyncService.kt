@@ -12,7 +12,7 @@ import org.json.JSONObject
  * Wakes automatically when data arrives, even if the watch app is closed.
  *
  * Data paths:
- *   /clawwatch/config   — model, system_prompt, max_tokens, rag_mode
+ *   /clawwatch/config   — model, system_prompt, max_tokens, rag_mode, nullclaw_mode
  *   /clawwatch/apikey   — Anthropic API key
  *   /clawwatch/bravekey — Brave Search API key
  */
@@ -57,6 +57,8 @@ class ConfigSyncService : WearableListenerService() {
                             runner.saveMaxTokens(json.getInt("max_tokens"))
                         json.optString("rag_mode").takeIf { it.isNotBlank() }
                             ?.let { runner.saveRagMode(it) }
+                        json.optString("nullclaw_mode").takeIf { it.isNotBlank() }
+                            ?.let { runner.saveNullClawMode(it) }
                         Log.i(TAG, "All config synced from phone (single burst)")
                     } catch (e: Exception) {
                         Log.e(TAG, "Config sync burst error: ${e.message}")

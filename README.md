@@ -4,7 +4,7 @@
 
 Tap. Speak. Get an answer. No cloud STT, no phone dependency, no latency from middlemen.
 
-ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` as a static ARM binary, paired with offline speech recognition (Vosk) and the built-in TTS engine. The current live response path uses Kotlin-side Anthropic calls, while the bundled NullClaw runtime remains in place for local agent state and the native watch runtime path.
+ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` as a static ARM binary, paired with offline speech recognition (Vosk) and the built-in TTS engine. The live response path now tries NullClaw first again on every query. On Wear OS, NullClaw's `curl` calls are bridged back to the parent Kotlin app for network access, and if the native path fails or times out ClawWatch falls back to the existing Kotlin Anthropic path instead of leaving the watch stuck.
 
 <p align="center">
   <img src="assets/screenshots/v2/clawwatch-v2-demo-still.png" alt="ClawWatch V2.0 demo still" width="260">
@@ -38,10 +38,12 @@ This makes ClawWatch unusually capable: it can stay in touch with both your othe
 ## How it works
 
 ```
-[tap mic] → Vosk STT (on-device, offline) → local command/router → Kotlin Anthropic call or local watch action → Android TTS → [watch speaks]
+[tap mic] → Vosk STT (on-device, offline) → local command/router → NullClaw-first query path via Wear OS curl bridge → Kotlin fallback or local watch action → Android TTS → [watch speaks]
 ```
 
 Everything except the LLM call runs on the watch itself. Some requests never leave the device at all: timers, pulse, vitals, and family-room summaries can be handled through the watch runtime and configured room connections directly.
+
+The NullClaw bridge matters on Wear OS because Samsung isolates child-process networking. ClawWatch solves that by letting the spawned NullClaw process "call curl" as usual, but routing the actual HTTP request through the parent Android process where network access still works.
 
 ## Stack
 
@@ -112,11 +114,14 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
 2. Settings → Developer options → **ADB debugging ON** + **Wireless debugging ON**
 3. Note the IP and port shown on screen
 
-### Install
+### Pair and install
 
 ```bash
-adb connect <watch-ip>:<port>
-adb install app/build/outputs/apk/debug/app-debug.apk
+adb pair <watch-ip>:<pairing-port>
+# enter the pairing code shown on the watch
+
+adb connect <watch-ip>:<adb-port>
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ### Set API key (from your Mac — no typing on watch)
@@ -133,7 +138,7 @@ That's it. Open ClawWatch on the watch.
 |---|---|
 | **Tap mic button** | Start listening |
 | **Speak** | Partial transcript shown while speaking |
-| **Stop speaking** | NullClaw + LLM processes query |
+| **Stop speaking** | Local router decides between local watch action or NullClaw-first query path |
 | **Tap again** | Interrupt at any point |
 | **Swipe left on avatar** | Switch to next avatar |
 | **Swipe right on avatar** | Close app |
@@ -231,7 +236,7 @@ The admin panel lets you:
 - **Capture logs** — download watch logcat snapshot for crash/debug review
 - **Rebuild & reinstall** — triggers `./gradlew assembleDebug && adb install` from the browser
 
-The admin panel talks to the watch via ADB. Make sure `adb connect <watch-ip>:<port>` is active before pushing.
+The admin panel talks to the watch via ADB. Make sure the watch is paired and `adb connect <watch-ip>:<adb-port>` is active before pushing.
 
 ## Configuration
 

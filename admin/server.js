@@ -158,7 +158,7 @@ app.post('/api/config', (req, res) => {
 
 // ── Push full SharedPreferences to watch ─────────────
 // Writes ALL settings at once: api_key, model, system_prompt,
-// max_tokens, rag_mode, brave_api_key
+// max_tokens, rag_mode, nullclaw_mode, brave_api_key
 
 function escapeXml(value) {
   return String(value)
@@ -242,7 +242,7 @@ app.get('/api/prefs', (req, res) => {
 // Push all settings to watch and save admin state
 app.post('/api/push/settings', (req, res) => {
   const {
-    anthropic_api_key, tavily_api_key, brave_api_key, groupmind_api_key, groupmind_rooms, poller_dry_run, poller_kill_switch, model, avatar_type, system_prompt, max_tokens, rag_mode
+    anthropic_api_key, tavily_api_key, brave_api_key, groupmind_api_key, groupmind_rooms, poller_dry_run, poller_kill_switch, model, avatar_type, system_prompt, max_tokens, rag_mode, nullclaw_mode
   } = req.body;
 
   // Validate API key
@@ -279,6 +279,7 @@ app.post('/api/push/settings', (req, res) => {
       updates.max_tokens = parsedMaxTokens;
     }
     if (rag_mode) updates.rag_mode = rag_mode;
+    if (nullclaw_mode) updates.nullclaw_mode = nullclaw_mode;
 
     // Poller settings (server-side) + pass key to watch for intent adapter
     const state = loadState();

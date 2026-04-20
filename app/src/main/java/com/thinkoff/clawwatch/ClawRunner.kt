@@ -11,6 +11,7 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 
 /**
@@ -35,6 +36,7 @@ class ClawRunner(private val context: Context) {
         private const val PREF_SYSTEM_PROMPT = "system_prompt"
         private const val PREF_MAX_TOKENS = "max_tokens"
         private const val PREF_RAG_MODE = "rag_mode"         // "off" | "kotlin" | "always" | "opus_tool"
+        private const val PREF_NULLCLAW_MODE = "nullclaw_mode" // "nullclaw_only" | "nullclaw_with_fallback"
         private const val PREF_BRAVE_KEY = "brave_api_key"
         private const val PREF_TAVILY_KEY = "tavily_api_key"
         private const val PREF_GROUPMIND_KEY = "groupmind_api_key"
@@ -47,7 +49,8 @@ class ClawRunner(private val context: Context) {
             "latest", "recent", "news", "weather", "temperature", "price", "stock",
             "score", "result", "standings", "match", "game", "live", "happening",
             "what time", "how long", "when does", "is it open", "open now",
-            "who won", "did they", "is there"
+            "who won", "did they", "is there", "search", "web search", "look up",
+            "lookup", "find out", "check online", "on the web", "google"
         )
 
         private const val DEFAULT_MODEL = "claude-opus-4-6"
@@ -55,15 +58,30 @@ class ClawRunner(private val context: Context) {
             "You are ClawWatch, a smart and relaxed voice presence on a watch. " +
             "Respond in 1-3 short sentences maximum. No markdown, no lists, no bullet points. " +
             "Use plain spoken language. Be natural, helpful, and a little playful when it fits, without sounding formal, salesy, or robotic."
+        private const val PREVIOUS_DEFAULT_SYSTEM_PROMPT =
+            "You are ClawWatch, an intelligent and relaxed companion living on a watch. " +
+            "Reply in 1 to 3 short spoken sentences. No markdown, no bullet points, no stiff assistant phrasing. " +
+            "Sound natural, grounded, and warm. You can help with the wearer's body, their team rooms, timers, and live information. " +
+            "Do not keep reminding people that you are a smartwatch unless they ask."
         private const val DEFAULT_MAX_TOKENS = 150
         private const val DEFAULT_SYSTEM_PROMPT =
             "You are ClawWatch, an intelligent and relaxed companion living on a watch. " +
             "Reply in 1 to 3 short spoken sentences. No markdown, no bullet points, no stiff assistant phrasing. " +
             "Sound natural, grounded, and warm. You can help with the wearer's body, their team rooms, timers, and live information. " +
+            "You can check current weather, news, prices, scores, opening hours, and other live web facts when needed. " +
+            "If the wearer asks whether you can look something up or check live information, do not claim you are unable to browse; answer naturally and use the available live info path. " +
             "Do not keep reminding people that you are a smartwatch unless they ask."
 
         private const val MAX_CONTEXT_MESSAGES = 10
         private const val MAX_CONTEXT_CHARS_PER_MESSAGE = 600
+        private const val NULLCLAW_TIMEOUT_MS = 15_000L
+        private const val NULLCLAW_NONTECHNICAL_TIMEOUT_MS = 8_000L
+        private const val NULLCLAW_MAX_ACCEPTABLE_LATENCY_MS = 8_000L
+        private const val NULLCLAW_FAILURE_COOLDOWN_QUERIES = 3
+        private const val NULLCLAW_STDERR_LIMIT_CHARS = 4_000
+        private const val MAX_SPOKEN_SENTENCES = 3
+        private const val MAX_SPOKEN_RESPONSE_CHARS = 280
+        private const val MAX_NONTECHNICAL_NULLCLAW_RAW_CHARS = 420
     }
 
     private data class ChatTurn(val role: String, val content: String)
@@ -78,8 +96,11 @@ class ClawRunner(private val context: Context) {
     private val homeDir get() = context.filesDir.parentFile!!
     private val nativeLibDir get() = context.applicationInfo.nativeLibraryDir
     private val binaryFile get() = File(nativeLibDir, "libnullclaw.so")
+    private val curlShimBinary get() = File(nativeLibDir, "libcurlshim.so")
     private val configFile get() = File(filesDir, CONFIG_NAME)
-    private val nullclawConfigFile get() = File(homeDir, ".nullclaw/config.json")
+    private val nullclawDir get() = File(homeDir, ".nullclaw")
+    private val nullclawWorkspaceDir get() = File(nullclawDir, "workspace")
+    private val nullclawConfigFile get() = File(nullclawDir, "config.json")
     private val caBundleFile get() = File(filesDir, "ca-certificates.crt")
 
     private val prefs by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { SecurePrefs.watch(context) }
@@ -87,6 +108,10 @@ class ClawRunner(private val context: Context) {
     private val conversation = ArrayDeque<ChatTurn>()
     @Volatile
     private var conversationConfigFingerprint: String? = null
+    @Volatile
+    private var nullClawCooldownRemaining = 0
+    @Volatile
+    private var nullClawLastFailureReason: String? = null
 
     private val healthConnect = HealthConnectManager(context)
 
@@ -114,6 +139,7 @@ class ClawRunner(private val context: Context) {
     fun saveSystemPrompt(prompt: String) = prefs.edit().putString(PREF_SYSTEM_PROMPT, prompt).apply()
     fun saveMaxTokens(n: Int) = prefs.edit().putInt(PREF_MAX_TOKENS, n).apply()
     fun saveRagMode(mode: String) = prefs.edit().putString(PREF_RAG_MODE, mode).apply()
+    fun saveNullClawMode(mode: String) = prefs.edit().putString(PREF_NULLCLAW_MODE, mode).apply()
 
     fun hasApiKey(): Boolean = prefs.getString(PREF_API_KEY, null)?.isNotBlank() == true
     private fun getApiKey(): String? = prefs.getString(PREF_API_KEY, null)
@@ -129,6 +155,8 @@ class ClawRunner(private val context: Context) {
     private fun getSystemPrompt(): String = prefs.getString(PREF_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT) ?: DEFAULT_SYSTEM_PROMPT
     private fun getMaxTokens(): Int = prefs.getInt(PREF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
     private fun getRagMode(): String = prefs.getString(PREF_RAG_MODE, "kotlin") ?: "kotlin"
+    private fun getNullClawMode(): String =
+        prefs.getString(PREF_NULLCLAW_MODE, "nullclaw_only") ?: "nullclaw_only"
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -145,12 +173,19 @@ class ClawRunner(private val context: Context) {
         }
         buildCaBundle()
         migrateDefaultPromptIfNeeded()
+        getApiKey()?.let { writeNullclawHomeConfig(it) }
+        writeRuntimeConfig()
+        prepareNullclawWorkspace()
         Log.i(TAG, "ClawRunner ready, home=${homeDir.absolutePath}, rag=${getRagMode()}")
     }
 
     private fun migrateDefaultPromptIfNeeded() {
         val current = prefs.getString(PREF_SYSTEM_PROMPT, null)?.trim()
-        if (current.isNullOrEmpty() || current == LEGACY_DEFAULT_SYSTEM_PROMPT) {
+        if (
+            current.isNullOrEmpty() ||
+            current == LEGACY_DEFAULT_SYSTEM_PROMPT ||
+            current == PREVIOUS_DEFAULT_SYSTEM_PROMPT
+        ) {
             prefs.edit().putString(PREF_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT).apply()
         }
     }
@@ -171,6 +206,107 @@ class ClawRunner(private val context: Context) {
             caBundleFile.writeText(bundle.toString())
             Log.i(TAG, "CA bundle written (${bundle.length} bytes)")
         }
+    }
+
+    private fun writeNullclawHomeConfig(apiKey: String) {
+        nullclawConfigFile.parentFile?.mkdirs()
+        val primaryModel = getModel().let { if (it.contains("/")) it else "anthropic/$it" }
+        val payload = JSONObject().apply {
+            put("agents", JSONObject().apply {
+                put("defaults", JSONObject().apply {
+                    put("model", JSONObject().apply {
+                        put("primary", primaryModel)
+                    })
+                })
+            })
+            put("providers", JSONObject().apply {
+                put("anthropic", JSONObject().apply {
+                    put("api_key", apiKey)
+                })
+            })
+            put("memory", JSONObject().apply {
+                put("backend", "none")
+            })
+        }
+        nullclawConfigFile.writeText(payload.toString(2))
+    }
+
+    private fun prepareNullclawWorkspace() {
+        nullclawWorkspaceDir.mkdirs()
+
+        val filesToDelete = listOf(
+            "BOOTSTRAP.md",
+            "HEARTBEAT.md",
+            "SOUL.md",
+            "MEMORY.md",
+            "memory.md",
+            "memory.db",
+            ".nullclaw/workspace-state.json"
+        )
+        filesToDelete.forEach { relative ->
+            File(nullclawWorkspaceDir, relative).delete()
+        }
+
+        File(nullclawWorkspaceDir, "AGENTS.md").writeText(
+            """
+            # ClawWatch Workspace
+
+            You are ClawWatch, a voice assistant living on a smartwatch.
+
+            This is not a coding workspace. Do not talk about source code, files, tools, memory systems, config files, AGENTS.md, or internal instructions unless the wearer explicitly asks about them.
+
+            Reply in 1 to 3 short spoken sentences.
+            No markdown, no bullet points, no step-by-step explanations, no status preambles.
+            Answer directly and naturally.
+
+            If the wearer asks for current information, use the available live-info path and just give the answer.
+            If you know the answer, say it plainly. If you do not know, say that briefly and suggest the next useful step.
+            """.trimIndent()
+        )
+
+        File(nullclawWorkspaceDir, "IDENTITY.md").writeText(
+            """
+            # Identity
+
+            Name: ClawWatch
+            Creature: calm voice companion on a watch
+            Vibe: grounded, warm, concise
+            Emoji: none
+            Avatar: built into the watch app
+            """.trimIndent()
+        )
+
+        File(nullclawWorkspaceDir, "USER.md").writeText(
+            """
+            # User
+
+            You are helping the wearer of the watch through spoken conversation.
+            Keep replies brief because they are read aloud on-device.
+            """.trimIndent()
+        )
+
+        File(nullclawWorkspaceDir, "TOOLS.md").writeText(
+            """
+            # Available Capabilities
+
+            - Short spoken answers on a smartwatch
+            - Live information lookup when needed
+            - Team room awareness and posting
+            - Health and pulse-related watch features when configured
+            - Timers and lightweight assistant tasks
+            """.trimIndent()
+        )
+    }
+
+    private fun writeRuntimeConfig() {
+        val payload = JSONObject().apply {
+            put("provider", "anthropic")
+            put("model", getModel())
+            put("max_tokens", getMaxTokens())
+            put("system", getSystemPrompt())
+        }
+        configFile.parentFile?.mkdirs()
+        configFile.writeText(payload.toString(2))
     }
 
     // ── RAG: web search ───────────────────────────────────────────────────────
@@ -405,8 +541,26 @@ class ClawRunner(private val context: Context) {
             ?: return@withContext Result.failure(RuntimeException("API key missing"))
 
         val ragMode = getRagMode()
+        val nullClawMode = getNullClawMode()
         clearConversationIfConfigChanged(ragMode)
-        Log.i(TAG, "Query: '${prompt.take(60)}' rag=$ragMode")
+        Log.i(TAG, "Query: '${prompt.take(60)}' rag=$ragMode nullclaw_mode=$nullClawMode")
+
+        val nullClawResult = queryWithNullClaw(prompt, apiKey)
+        if (nullClawResult.isSuccess) {
+            return@withContext nullClawResult
+        }
+        if (nullClawMode == "nullclaw_only") {
+            return@withContext Result.failure(
+                RuntimeException(
+                    nullClawResult.exceptionOrNull()?.message ?: "NullClaw failed in nullclaw_only mode"
+                )
+            )
+        }
+        Log.w(
+            TAG,
+            "NullClaw path failed, falling back to Kotlin query path",
+            nullClawResult.exceptionOrNull()
+        )
 
         return@withContext when (ragMode) {
             "opus_tool" -> queryWithOpusTool(prompt, apiKey)
@@ -414,6 +568,282 @@ class ClawRunner(private val context: Context) {
             "kotlin"    -> queryWithKotlinRag(prompt, apiKey, forceSearch = false)
             else        -> queryDirect(prompt, apiKey)
         }
+    }
+
+    private suspend fun queryWithNullClaw(prompt: String, apiKey: String): Result<String> =
+        withContext(Dispatchers.IO) {
+            val promptLooksTechnical = promptLooksTechnical(prompt)
+            val nullClawMode = getNullClawMode()
+            if (nullClawMode != "nullclaw_only") {
+                consumeNullClawCooldown()?.let { reason ->
+                    Log.i(TAG, "Skipping NullClaw during cooldown: $reason")
+                    return@withContext Result.failure(RuntimeException("NullClaw cooldown active: $reason"))
+                }
+            }
+            val nativeTimeoutMs = if (promptLooksTechnical || nullClawMode == "nullclaw_only") {
+                NULLCLAW_TIMEOUT_MS
+            } else {
+                NULLCLAW_NONTECHNICAL_TIMEOUT_MS
+            }
+
+            if (!binaryFile.exists()) {
+                val reason = "NullClaw binary missing"
+                recordNullClawFailure(reason)
+                return@withContext Result.failure(RuntimeException(reason))
+            }
+
+            writeNullclawHomeConfig(apiKey)
+            writeRuntimeConfig()
+
+            val curlBridge = NullClawCurlBridge(filesDir, curlShimBinary)
+            curlBridge.prepare()
+            curlBridge.start()
+
+            try {
+                val startedAt = System.currentTimeMillis()
+                val process = ProcessBuilder(
+                    binaryFile.absolutePath,
+                    "agent",
+                    "--provider", "anthropic",
+                    "--model", getModel(),
+                    "--message", buildNullClawPrompt(prompt),
+                    "--output", "plain",
+                    "--config", configFile.absolutePath
+                )
+                    .directory(nullclawWorkspaceDir)
+                    .apply {
+                        environment().apply {
+                            put("ANTHROPIC_API_KEY", apiKey)
+                            put("HOME", homeDir.absolutePath)
+                            put("PATH", "${filesDir.absolutePath}:$nativeLibDir:/system/bin:/system/xbin")
+                            put("NULLCLAW_CURL_BRIDGE_DIR", curlBridge.directoryPath())
+                        }
+                    }
+                    .start()
+
+                var output = ""
+                var error = ""
+                val stdoutThread = Thread { output = process.inputStream.bufferedReader().readText() }
+                val stderrThread = Thread { error = readTextWithLimit(process.errorStream, NULLCLAW_STDERR_LIMIT_CHARS) }
+                stdoutThread.start()
+                stderrThread.start()
+
+                if (!process.waitFor(nativeTimeoutMs, TimeUnit.MILLISECONDS)) {
+                    process.destroy()
+                    if (!process.waitFor(2, TimeUnit.SECONDS)) {
+                        process.destroyForcibly()
+                    }
+                    stdoutThread.join(1_000)
+                    stderrThread.join(1_000)
+                    val reason = "NullClaw timed out after ${nativeTimeoutMs / 1000}s"
+                    recordNullClawFailure(reason)
+                    return@withContext Result.failure(RuntimeException(reason))
+                }
+
+                val exit = process.exitValue()
+                stdoutThread.join()
+                stderrThread.join()
+                val durationMs = System.currentTimeMillis() - startedAt
+
+                Log.i(TAG, "NullClaw exit=$exit durationMs=$durationMs output='${output.take(120)}' stderr='${error.take(200)}'")
+
+                if (exit != 0) {
+                    val reason = error.ifBlank { "NullClaw exited with code $exit" }.take(240)
+                    recordNullClawFailure(reason)
+                    return@withContext Result.failure(RuntimeException(reason))
+                }
+
+                val text = shapeAssistantReply(output, prompt)
+                if (text.isBlank()) {
+                    val reason = "NullClaw returned empty output"
+                    recordNullClawFailure(reason)
+                    return@withContext Result.failure(RuntimeException(reason))
+                }
+
+                val rejectionReason = nullClawRejectionReason(output, text, prompt, durationMs, nullClawMode)
+                if (rejectionReason != null) {
+                    recordNullClawFailure(rejectionReason)
+                    return@withContext Result.failure(RuntimeException(rejectionReason))
+                }
+
+                appendConversation("user", prompt)
+                appendConversation("assistant", text)
+                clearNullClawFailure()
+                Result.success(text)
+            } catch (e: Exception) {
+                recordNullClawFailure(e.message ?: e.javaClass.simpleName)
+                Result.failure(e)
+            } finally {
+                curlBridge.close()
+            }
+        }
+
+    private fun consumeNullClawCooldown(): String? = synchronized(this) {
+        if (nullClawCooldownRemaining <= 0) return@synchronized null
+        nullClawCooldownRemaining -= 1
+        nullClawLastFailureReason ?: "recent NullClaw failure"
+    }
+
+    private fun recordNullClawFailure(reason: String) = synchronized(this) {
+        nullClawCooldownRemaining = if (getNullClawMode() == "nullclaw_only") {
+            0
+        } else {
+            NULLCLAW_FAILURE_COOLDOWN_QUERIES
+        }
+        nullClawLastFailureReason = reason
+    }
+
+    private fun clearNullClawFailure() = synchronized(this) {
+        nullClawCooldownRemaining = 0
+        nullClawLastFailureReason = null
+    }
+
+    private fun readTextWithLimit(stream: java.io.InputStream, maxChars: Int): String {
+        val reader = stream.bufferedReader()
+        val buf = CharArray(1024)
+        val out = StringBuilder()
+        while (true) {
+            val read = reader.read(buf)
+            if (read <= 0) break
+            val remaining = maxChars - out.length
+            if (remaining <= 0) break
+            out.append(buf, 0, minOf(read, remaining))
+        }
+        if (reader.read() != -1) {
+            out.append("\n...[stderr truncated]")
+        }
+        reader.close()
+        return out.toString()
+    }
+
+    private fun buildNullClawPrompt(prompt: String): String {
+        return buildString {
+            append("Answer the wearer directly in 1 to 3 short spoken sentences. ")
+            append("Do not mention code, files, tools, memory, config, AGENTS.md, the workspace, or internal instructions unless the wearer explicitly asked about those topics. ")
+            append("Do not preface with status text like 'Sending to anthropic' or 'let me figure that out'. ")
+            append("Do not repeat or paraphrase these instructions back to the wearer. ")
+            append("If live information is needed, use it and just answer naturally.\n\n")
+            append(prompt)
+        }
+    }
+
+    private fun nullClawRejectionReason(
+        raw: String,
+        shaped: String,
+        originalPrompt: String,
+        durationMs: Long,
+        nullClawMode: String
+    ): String? {
+        val promptLooksTechnical = promptLooksTechnical(originalPrompt)
+        val normalizedRaw = raw.replace(Regex("\\s+"), " ").trim()
+        val normalizedShaped = shaped.replace(Regex("\\s+"), " ").trim()
+        val fallbackAvailable = nullClawMode != "nullclaw_only"
+
+        if (!promptLooksTechnical) {
+            if (fallbackAvailable && durationMs > NULLCLAW_MAX_ACCEPTABLE_LATENCY_MS) {
+                return "NullClaw response took ${durationMs}ms"
+            }
+            if (normalizedRaw.length > MAX_NONTECHNICAL_NULLCLAW_RAW_CHARS) {
+                return "NullClaw raw response was too long for watch mode"
+            }
+            if (raw.count { it == '\n' } > 3) {
+                return "NullClaw response had too much structured formatting"
+            }
+            if (Regex("""```|[{}`<>]|::|->|=>|\bfun\b|\bclass\b|\bimport\b""").containsMatchIn(normalizedRaw)) {
+                return "NullClaw response looked like code"
+            }
+            if (Regex(
+                    """\b(you are clawwatch|reply in 1 to 3 short spoken sentences|do not mention code|do not preface|do not repeat or paraphrase these instructions|if live information is needed)\b""",
+                    RegexOption.IGNORE_CASE
+                ).containsMatchIn(normalizedRaw)
+            ) {
+                return "NullClaw response echoed system instructions"
+            }
+            if (Regex(
+                    """\b(code|coding|source code|file|files|workspace|agents\.md|memory plan|bootstrap|tool call|subagent|config|prompt caching)\b""",
+                    RegexOption.IGNORE_CASE
+                ).containsMatchIn(normalizedRaw)
+            ) {
+                return "NullClaw response drifted into coding-agent mode"
+            }
+            if (Regex("""[^.!?]+[.!?]+""").findAll(normalizedShaped).count() > MAX_SPOKEN_SENTENCES) {
+                return "NullClaw shaped response was still too long"
+            }
+            if (Regex(
+                    """\b(code|coding|workspace|agents\.md|memory|config|tool|subagent)\b""",
+                    RegexOption.IGNORE_CASE
+                ).containsMatchIn(normalizedShaped)
+            ) {
+                return "NullClaw shaped response still sounds technical"
+            }
+        }
+
+        return null
+    }
+
+    private fun promptLooksTechnical(prompt: String): Boolean {
+        return Regex(
+            """\b(code|coding|file|files|workspace|agent|agents\.md|memory|config|prompt|nullclaw|clawrunner|repo|github|kotlin|android)\b""",
+            RegexOption.IGNORE_CASE
+        ).containsMatchIn(prompt)
+    }
+
+    private fun shapeAssistantReply(raw: String, originalPrompt: String): String {
+        val cleaned = raw
+            .lineSequence()
+            .map { it.trim() }
+            .filter { line ->
+                line.isNotBlank() &&
+                    !line.equals("Sending to anthropic...", ignoreCase = true) &&
+                    !line.startsWith("info(", ignoreCase = true) &&
+                    !line.startsWith("debug(", ignoreCase = true) &&
+                    !line.startsWith("warn(", ignoreCase = true) &&
+                    !Regex(
+                        """^(you are clawwatch|reply in 1 to 3 short spoken sentences|do not mention code|do not preface|do not repeat or paraphrase these instructions|if live information is needed)\b""",
+                        RegexOption.IGNORE_CASE
+                    ).containsMatchIn(line)
+            }
+            .joinToString(" ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
+        if (cleaned.isBlank()) return ""
+
+        val promptLooksTechnical = promptLooksTechnical(originalPrompt)
+
+        val sentenceRegex = Regex("""[^.!?]+[.!?]+|[^.!?]+$""")
+        val sentences = sentenceRegex.findAll(cleaned)
+            .map { it.value.trim() }
+            .filter { it.isNotBlank() }
+            .filter { sentence ->
+                promptLooksTechnical || !Regex(
+                    """\b(code|coding|file|files|workspace|agent|agents\.md|memory|config|bootstrap|tool|tools|you are clawwatch|reply in 1 to 3 short spoken sentences|do not mention code|do not preface|do not repeat or paraphrase these instructions|if live information is needed)\b""",
+                    RegexOption.IGNORE_CASE
+                ).containsMatchIn(sentence)
+            }
+            .toList()
+
+        val limitedBySentence = if (sentences.isNotEmpty()) {
+            sentences.take(MAX_SPOKEN_SENTENCES).joinToString(" ")
+        } else {
+            cleaned
+        }
+
+        val limitedByChars = if (limitedBySentence.length <= MAX_SPOKEN_RESPONSE_CHARS) {
+            limitedBySentence
+        } else {
+            val truncated = limitedBySentence.take(MAX_SPOKEN_RESPONSE_CHARS)
+                .substringBeforeLast(' ')
+                .ifBlank { limitedBySentence.take(MAX_SPOKEN_RESPONSE_CHARS) }
+                .trimEnd(',', ';', ':', ' ')
+            if (truncated.endsWith(".") || truncated.endsWith("!") || truncated.endsWith("?")) {
+                truncated
+            } else {
+                "$truncated."
+            }
+        }
+
+        return limitedByChars.trim()
     }
 
     suspend fun summarizeFamilyStatus(): Result<String> = withContext(Dispatchers.IO) {
@@ -719,12 +1149,13 @@ class ClawRunner(private val context: Context) {
 
                 val finalText = secondResponse.getJSONArray("content")
                     .getJSONObject(0).getString("text").trim()
+                val shapedFinalText = shapeAssistantReply(finalText, prompt)
 
                 appendConversation("user", prompt)
-                appendConversation("assistant", finalText)
+                appendConversation("assistant", shapedFinalText)
 
-                Log.i(TAG, "Opus tool result: '${finalText.take(80)}'")
-                Result.success(finalText)
+                Log.i(TAG, "Opus tool result: '${shapedFinalText.take(80)}'")
+                Result.success(shapedFinalText)
 
             } catch (e: Exception) {
                 Log.e(TAG, "Opus tool query error", e)
@@ -793,10 +1224,11 @@ class ClawRunner(private val context: Context) {
                 .getJSONObject(0)
                 .getString("text")
                 .trim()
+            val shapedText = shapeAssistantReply(text, userMessage)
             appendConversation("user", userMessage)
-            appendConversation("assistant", text)
-            Log.i(TAG, "Response: '${text.take(80)}'")
-            Result.success(text)
+            appendConversation("assistant", shapedText)
+            Log.i(TAG, "Response: '${shapedText.take(80)}'")
+            Result.success(shapedText)
         } catch (e: Exception) {
             Result.failure(RuntimeException("Failed to parse response: ${e.message}"))
         }
@@ -837,6 +1269,8 @@ class ClawRunner(private val context: Context) {
             append(getSystemPrompt())
             append('\u001F')
             append(ragMode)
+            append('\u001F')
+            append(getNullClawMode())
         }
         synchronized(conversationLock) {
             val previous = conversationConfigFingerprint

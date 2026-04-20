@@ -406,6 +406,19 @@
     <input type="hidden" id="ragMode" value="kotlin" />
   </div>
 
+  <!-- NullClaw Mode -->
+  <div class="card">
+    <h2>NullClaw Mode</h2>
+    <label>Runtime Mode</label>
+    <select id="nullclawMode">
+      <option value="nullclaw_only">NullClaw only (debug)</option>
+      <option value="nullclaw_with_fallback">NullClaw with Kotlin fallback</option>
+    </select>
+    <p class="rag-description">
+      <b>NullClaw only</b> fails loudly when the native path is bad. Use this to debug and verify true end-to-end NullClaw behavior.
+    </p>
+  </div>
+
   <!-- System Prompt -->
   <div class="card">
     <h2>System Prompt</h2>
@@ -456,7 +469,8 @@
         avatar_type: document.getElementById('avatarType').value,
         system_prompt: document.getElementById('systemPrompt').value,
         max_tokens: parseInt(document.getElementById('maxTokens').value),
-        rag_mode: ragMode
+        rag_mode: ragMode,
+        nullclaw_mode: document.getElementById('nullclawMode').value
       };
       // Remove undefined
       Object.keys(settings).forEach(k => settings[k] === undefined && delete settings[k]);
@@ -494,6 +508,7 @@
         document.getElementById('maxTokensVal').textContent = p.max_tokens;
       }
       if (p.rag_mode) setRag(p.rag_mode);
+      if (p.nullclaw_mode) document.getElementById('nullclawMode').value = p.nullclaw_mode;
       if (p.groupmind_rooms) document.getElementById('groupMindRooms').value = p.groupmind_rooms;
       if (p.groupmind_api_key) document.getElementById('groupMindKey').value = p.groupmind_api_key;
       document.getElementById('pollerDryRun').checked = !!p.poller_dry_run;
