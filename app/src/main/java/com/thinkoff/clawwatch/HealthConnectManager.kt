@@ -73,6 +73,40 @@ class HealthConnectManager(context: Context) {
         HealthPermission.getReadPermission(ExerciseSessionRecord::class)
     )
 
+    private val writePermission: String =
+        HealthPermission.getWritePermission(HeartRateRecord::class)
+
+    suspend fun canWriteHeartRate(): Boolean {
+        return getGrantedPermissions().contains(writePermission)
+    }
+
+    /**
+     * Write a single live pulse reading to Health Connect so other apps
+     * (phone-side companion, Oura dashboards, etc.) can see it.
+     * Silent no-op if the write permission is not granted.
+     */
+    suspend fun writeLiveHeartRate(bpm: Int, time: Instant = Instant.now()) = withContext(Dispatchers.IO) {
+        if (bpm <= 20 || bpm >= 250) return@withContext
+        if (!isAvailable()) return@withContext
+        val client = healthConnectClient ?: return@withContext
+        if (!canWriteHeartRate()) return@withContext
+        try {
+            val record = HeartRateRecord(
+                startTime = time,
+                startZoneOffset = null,
+                endTime = time.plusMillis(1),
+                endZoneOffset = null,
+                samples = listOf(
+                    HeartRateRecord.Sample(time = time, beatsPerMinute = bpm.toLong())
+                )
+            )
+            client.insertRecords(listOf(record))
+            Log.i(TAG, "Wrote live HR $bpm bpm to Health Connect")
+        } catch (e: Exception) {
+            Log.w(TAG, "HR write failed: ${e.message}")
+        }
+    }
+
     // HRV permission may not exist on all firmware — request separately, don't require
     private val optionalPermissions: Set<String> by lazy {
         try {
@@ -82,7 +116,8 @@ class HealthConnectManager(context: Context) {
         }
     }
 
-    val allRequestablePermissions: Set<String> get() = permissions + optionalPermissions
+    val allRequestablePermissions: Set<String>
+        get() = permissions + optionalPermissions + setOf(writePermission)
 
     private suspend fun getGrantedPermissions(): Set<String> {
         if (!isAvailable()) return emptySet()

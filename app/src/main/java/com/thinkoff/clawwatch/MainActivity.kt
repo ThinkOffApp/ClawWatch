@@ -852,6 +852,10 @@ class MainActivity : AppCompatActivity() {
             )
             if (token != interactionToken) return@launch
 
+            snapshot.heartRateBpm?.let { bpm ->
+                launch { healthConnectManager.writeLiveHeartRate(bpm) }
+            }
+
             val response = when (command) {
                 LocalCommandType.VITALS_SNAPSHOT -> buildVitalsSummary(snapshot, canReadHeartRate, canReadSteps)
                 LocalCommandType.HEART_RATE -> buildHeartRateSummary(snapshot)
