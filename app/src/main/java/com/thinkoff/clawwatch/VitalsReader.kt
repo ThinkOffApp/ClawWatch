@@ -3,6 +3,7 @@ package com.thinkoff.clawwatch
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Instant
@@ -29,7 +30,8 @@ class VitalsReader(private val context: Context) {
         val pressureHpa: Float?,
         val stepCount: Int?,
         val motionLevel: MotionLevel,
-        val batteryPercent: Int
+        val batteryPercent: Int,
+        val phoneVitals: PhoneVitalsStore.Snapshot?
     )
 
     enum class MotionLevel { STILL, LIGHT, ACTIVE }
@@ -81,8 +83,33 @@ class VitalsReader(private val context: Context) {
             pressureHpa = pressure,
             stepCount = steps,
             motionLevel = motionLevel,
-            batteryPercent = batteryPercent
+            batteryPercent = batteryPercent,
+            phoneVitals = PhoneVitalsStore(context).latest()
         )
+    }
+
+    suspend fun measurePulseAndWriteToHealthConnect(): Int? = withContext(Dispatchers.Default) {
+        val bpm = readHeartRateSensor(timeoutMs = 10_000L) ?: return@withContext null
+        try {
+            val sdkStatus = HealthConnectClient.getSdkStatus(context)
+            if (sdkStatus == HealthConnectClient.SDK_AVAILABLE) {
+                val now = Instant.now()
+                val record = HeartRateRecord(
+                    startTime = now.minusSeconds(1),
+                    startZoneOffset = null,
+                    endTime = now,
+                    endZoneOffset = null,
+                    samples = listOf(HeartRateRecord.Sample(now, bpm.toLong())),
+                    metadata = Metadata(recordingMethod = Metadata.RECORDING_METHOD_ACTIVELY_RECORDED)
+                )
+                HealthConnectClient.getOrCreate(context).insertRecords(listOf(record))
+            } else {
+                android.util.Log.w("VitalsReader", "Health Connect unavailable, pulse measured but not written (status=$sdkStatus).")
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("VitalsReader", "Health Connect pulse write failed: ${e.message}")
+        }
+        bpm
     }
 
     private suspend fun readSingleValue(sensorType: Int, timeoutMs: Long): Float? =
@@ -97,6 +124,42 @@ class VitalsReader(private val context: Context) {
                 override fun onSensorChanged(event: SensorEvent) {
                     sensorManager.unregisterListener(this)
                     cont.resume(event.values.firstOrNull())
+                }
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+            }
+
+            try {
+                sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+            } catch (_: SecurityException) {
+                cont.resume(null)
+                return@suspendCancellableCoroutine
+            }
+            cont.invokeOnCancellation { sensorManager.unregisterListener(listener) }
+
+            GlobalScope.launch(Dispatchers.Default) {
+                delay(timeoutMs)
+                sensorManager.unregisterListener(listener)
+                if (cont.isActive) cont.resume(null)
+            }
+        }
+
+    private suspend fun readHeartRateSensor(timeoutMs: Long): Int? =
+        suspendCancellableCoroutine { cont ->
+            val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE)
+            if (sensor == null) {
+                cont.resume(null)
+                return@suspendCancellableCoroutine
+            }
+
+            val listener = object : SensorEventListener {
+                override fun onSensorChanged(event: SensorEvent) {
+                    val bpm = event.values.firstOrNull()
+                        ?.takeIf { it in 30f..230f }
+                        ?.roundToIntSafe()
+                    if (bpm != null) {
+                        sensorManager.unregisterListener(this)
+                        cont.resume(bpm)
+                    }
                 }
                 override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
             }

@@ -15,6 +15,7 @@ import org.json.JSONObject
  *   /clawwatch/config   — model, system_prompt, max_tokens, rag_mode, nullclaw_mode
  *   /clawwatch/apikey   — Anthropic API key
  *   /clawwatch/bravekey — Brave Search API key
+ *   /clawwatch/vitals   — phone/Oura vitals snapshot as JSON payload
  */
 class ConfigSyncService : WearableListenerService() {
 
@@ -27,6 +28,7 @@ class ConfigSyncService : WearableListenerService() {
 
     override fun onDataChanged(events: DataEventBuffer) {
         val runner = ClawRunner(applicationContext)
+        val phoneVitalsStore = PhoneVitalsStore(applicationContext)
 
         for (event in events) {
             if (event.type != DataEvent.TYPE_CHANGED) continue
@@ -44,9 +46,13 @@ class ConfigSyncService : WearableListenerService() {
                         json.optString("tavily_key").takeIf { it.isNotBlank() }
                             ?.let { runner.saveTavilyKey(it) }
                         (json.optString("groupmind_key").takeIf { it.isNotBlank() }
+                            ?: json.optString("groupmind_api_key").takeIf { it.isNotBlank() }
+                            ?: json.optString("clawhub_api_key").takeIf { it.isNotBlank() }
+                            ?: json.optString("clawhub_key").takeIf { it.isNotBlank() }
                             ?: json.optString("antfarm_key").takeIf { it.isNotBlank() })
                             ?.let { runner.saveGroupMindKey(it) }
                         (json.optString("groupmind_rooms").takeIf { it.isNotBlank() }
+                            ?: json.optString("clawhub_rooms").takeIf { it.isNotBlank() }
                             ?: json.optString("antfarm_rooms").takeIf { it.isNotBlank() })
                             ?.let { runner.saveGroupMindRooms(it) }
                         json.optString("model").takeIf { it.isNotBlank() }
@@ -62,6 +68,15 @@ class ConfigSyncService : WearableListenerService() {
                         Log.i(TAG, "All config synced from phone (single burst)")
                     } catch (e: Exception) {
                         Log.e(TAG, "Config sync burst error: ${e.message}")
+                    }
+                }
+                "/clawwatch/vitals" -> {
+                    val payload = map.getString("payload") ?: continue
+                    try {
+                        phoneVitalsStore.saveFromJson(payload)
+                        Log.i(TAG, "Phone vitals synced from companion")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Phone vitals sync error: ${e.message}")
                     }
                 }
             }

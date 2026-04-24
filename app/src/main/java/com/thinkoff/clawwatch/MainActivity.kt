@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
     private enum class State { SETUP, IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
     private enum class AvatarType { ANT, LOBSTER, ORANGE_LOBSTER, ROBOT, BOY, GIRL }
     private enum class AvatarState { IDLE, LISTENING, THINKING, SEARCHING, SPEAKING, ERROR }
-    private enum class LocalCommandType { VITALS_SNAPSHOT, HEART_RATE, FAMILY_STATUS }
+    private enum class LocalCommandType { VITALS_SNAPSHOT, HEART_RATE, MEASURE_PULSE_WRITE, FAMILY_STATUS, WEATHER, EVENT_TOPIC }
     private data class TimerCommand(
         val totalSeconds: Int,
         val spokenDuration: String
@@ -509,6 +509,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleLocalCommand(prompt: String, token: Int): Boolean {
+        if (isWeatherCommand(prompt)) {
+            launchWeatherCommand(prompt, token)
+            return true
+        }
+        if (isEventTopicCommand(prompt)) {
+            launchEventTopicCommand(token)
+            return true
+        }
         parseVitalsCommand(prompt)?.let { command ->
             launchVitalsCommand(command, token)
             return true
@@ -527,6 +535,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun parseVitalsCommand(prompt: String): LocalCommandType? {
         val normalized = prompt.lowercase()
+        val healthSubject = normalized.contains("google health") ||
+            normalized.contains("health connect") ||
+            normalized.contains("oura") ||
+            normalized.contains("my health")
+        if (healthSubject) {
+            return LocalCommandType.VITALS_SNAPSHOT
+        }
+        if (
+            (normalized.contains("measure") || normalized.contains("write") || normalized.contains("record")) &&
+            (normalized.contains("pulse") || normalized.contains("heart rate") || normalized.contains("heartbeat"))
+        ) {
+            return LocalCommandType.MEASURE_PULSE_WRITE
+        }
         if (
             normalized.contains("pulse") ||
             normalized.contains("heart rate") ||
@@ -543,6 +564,29 @@ class MainActivity : AppCompatActivity() {
             return LocalCommandType.VITALS_SNAPSHOT
         }
         return null
+    }
+
+    private fun isWeatherCommand(prompt: String): Boolean {
+        val normalized = prompt.lowercase()
+        return normalized.contains("weather") ||
+            normalized.contains("forecast") ||
+            normalized.contains("temperature tomorrow") ||
+            normalized.contains("rain tomorrow")
+    }
+
+    private fun isEventTopicCommand(prompt: String): Boolean {
+        val normalized = prompt.lowercase()
+        val hasEvent = normalized.contains("event") ||
+            normalized.contains("attending") ||
+            normalized.contains("today's topic") ||
+            normalized.contains("todays topic")
+        return hasEvent && (
+            normalized.contains("topic") ||
+                normalized.contains("what is") ||
+                normalized.contains("what's") ||
+                normalized.contains("where") ||
+                normalized.contains("attending")
+            )
     }
 
     private fun isFamilyStatusCommand(prompt: String): Boolean {
@@ -700,10 +744,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun requiredVitalsPermissions(command: LocalCommandType): List<String> {
         val permissions = mutableListOf<String>()
-        if (command == LocalCommandType.HEART_RATE || command == LocalCommandType.VITALS_SNAPSHOT) {
+        if (command == LocalCommandType.HEART_RATE ||
+            command == LocalCommandType.MEASURE_PULSE_WRITE ||
+            command == LocalCommandType.VITALS_SNAPSHOT
+        ) {
             if (!hasPermission("android.permission.health.READ_HEART_RATE")) {
                 permissions += "android.permission.health.READ_HEART_RATE"
             }
+        }
+        if (command == LocalCommandType.MEASURE_PULSE_WRITE &&
+            !hasPermission("android.permission.health.WRITE_HEART_RATE")
+        ) {
+            permissions += "android.permission.health.WRITE_HEART_RATE"
         }
         if (command == LocalCommandType.VITALS_SNAPSHOT && !hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
             permissions += Manifest.permission.ACTIVITY_RECOGNITION
@@ -735,6 +787,14 @@ class MainActivity : AppCompatActivity() {
 
             val response = when (command) {
                 LocalCommandType.VITALS_SNAPSHOT -> buildVitalsSummary(snapshot, canReadHeartRate, canReadSteps)
+                LocalCommandType.MEASURE_PULSE_WRITE -> {
+                    val bpm = vitalsReader.measurePulseAndWriteToHealthConnect()
+                    if (bpm != null) {
+                        "Your pulse is $bpm beats per minute. I wrote it to Health Connect."
+                    } else {
+                        "I couldn't get a live pulse reading right now."
+                    }
+                }
                 LocalCommandType.HEART_RATE -> {
                     if (snapshot.heartRateBpm != null) {
                         "Your last recorded pulse is ${snapshot.heartRateBpm} beats per minute."
@@ -743,7 +803,35 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 LocalCommandType.FAMILY_STATUS -> "I couldn't check the family yet."
+                LocalCommandType.WEATHER -> "I couldn't check the weather yet."
+                LocalCommandType.EVENT_TOPIC -> "I couldn't check today's event yet."
             }
+            binding.responseText.text = response
+            speakLocalResponse(response, token)
+        }
+    }
+
+    private fun launchWeatherCommand(prompt: String, token: Int) {
+        queryJob?.cancel()
+        setState(State.SEARCHING)
+        setStatus("Checking weather…")
+        queryJob = lifecycleScope.launch {
+            val result = clawRunner.weatherSummary(prompt)
+            if (token != interactionToken) return@launch
+            val response = result.getOrElse { "I couldn't get the weather right now." }
+            binding.responseText.text = response
+            speakLocalResponse(response, token)
+        }
+    }
+
+    private fun launchEventTopicCommand(token: Int) {
+        queryJob?.cancel()
+        setState(State.THINKING)
+        setStatus("Checking today's event…")
+        queryJob = lifecycleScope.launch {
+            val result = clawRunner.summarizeCurrentEvent()
+            if (token != interactionToken) return@launch
+            val response = result.getOrElse { "I couldn't check today's event right now." }
             binding.responseText.text = response
             speakLocalResponse(response, token)
         }
@@ -812,6 +900,18 @@ class MainActivity : AppCompatActivity() {
             details += "The watch step counter reads ${snapshot.stepCount}."
         } else if (!canReadSteps) {
             details += "Step count is unavailable until you allow activity access."
+        }
+        snapshot.phoneVitals?.takeIf { it.isFresh() }?.let { phoneVitals ->
+            val phoneDetails = mutableListOf<String>()
+            phoneVitals.restingHeartRateBpm?.let { phoneDetails += "resting pulse $it" }
+            phoneVitals.hrvRmssdMs?.let { phoneDetails += "HRV ${it.toInt()} milliseconds" }
+            phoneVitals.sleepSummary?.let { phoneDetails += it }
+            phoneVitals.readinessSummary?.let { phoneDetails += it }
+            if (phoneDetails.isNotEmpty()) {
+                details += "${phoneVitals.source.replaceFirstChar { it.uppercase() }} phone data: ${phoneDetails.joinToString(", ")}."
+            }
+        } ?: run {
+            details += "No fresh phone or Oura vitals have arrived yet."
         }
         details += describeRecoveryState(snapshot, snapshot.heartRateBpm)
         return details.joinToString(" ").take(320)

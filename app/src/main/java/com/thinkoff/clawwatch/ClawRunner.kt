@@ -381,11 +381,19 @@ class ClawRunner(private val context: Context) {
         else -> "Overcast"
     }
 
+    suspend fun weatherSummary(query: String): Result<String> = withContext(Dispatchers.IO) {
+        val result = wttrSearch(query).firstOrNull()
+            ?: return@withContext Result.failure(RuntimeException("I couldn't get the weather right now."))
+        Result.success(result.second.take(260))
+    }
+
     private fun wttrSearch(query: String): List<Pair<String, String>> {
         return try {
             // Extract location from query
-            val location = query.lowercase()
-                .replace(Regex("\\b(weather|forecast|temperature|what's?|what is|the|is|in|today|tonight|now|currently|right now|please|tell me)\\b"), " ")
+            val lowerQuery = query.lowercase()
+            val wantsTomorrow = lowerQuery.contains("tomorrow")
+            val location = lowerQuery
+                .replace(Regex("\\b(weather|forecast|temperature|what's?|what is|the|is|in|today|tomorrow|tonight|now|currently|right now|please|tell me)\\b"), " ")
                 .trim().replace(Regex("\\s+"), " ").ifBlank { "Berlin" }
 
             // Step 1: geocode the location
@@ -403,14 +411,30 @@ class ClawRunner(private val context: Context) {
             val cityName = place.getString("name")
             val country = place.optString("country", "")
 
-            // Step 2: get current weather
+            // Step 2: get current weather and tomorrow forecast
             val wxUrl = URL("https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
                 "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature" +
+                "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max" +
+                "&forecast_days=2&timezone=auto" +
                 "&temperature_unit=celsius&wind_speed_unit=kmh&format=json")
             val wxConn = wxUrl.openConnection() as HttpURLConnection
             wxConn.connectTimeout = 8_000; wxConn.readTimeout = 8_000
             if (wxConn.responseCode != 200) return emptyList()
             val wxJson = JSONObject(wxConn.inputStream.bufferedReader().readText())
+            if (wantsTomorrow) {
+                val daily = wxJson.getJSONObject("daily")
+                val idx = 1
+                val desc = wmoDescription(daily.getJSONArray("weather_code").getInt(idx))
+                val max = daily.getJSONArray("temperature_2m_max").getDouble(idx)
+                val min = daily.getJSONArray("temperature_2m_min").getDouble(idx)
+                val rain = daily.optJSONArray("precipitation_probability_max")?.optInt(idx, -1) ?: -1
+                val wind = daily.optJSONArray("wind_speed_10m_max")?.optDouble(idx, -1.0) ?: -1.0
+                val rainText = if (rain >= 0) " Rain chance $rain%." else ""
+                val windText = if (wind >= 0) " Wind up to ${wind} km/h." else ""
+                val summary = "Tomorrow in $cityName: $desc, ${min} to ${max}°C.$rainText$windText"
+                Log.i(TAG, "Open-Meteo: $summary")
+                return listOf(Pair("Tomorrow weather in $cityName, $country", summary))
+            }
             val current = wxJson.getJSONObject("current")
 
             val tempC = current.getDouble("temperature_2m")
@@ -870,6 +894,52 @@ class ClawRunner(private val context: Context) {
         )
     }
 
+    suspend fun summarizeCurrentEvent(): Result<String> = withContext(Dispatchers.IO) {
+        val groupMindKey = getGroupMindKey()
+            ?: return@withContext Result.success(
+                "I don't have room access configured yet, so I can't check today's event context."
+            )
+        val recentMessages = fetchRecentFamilyMessages(getGroupMindRooms(), groupMindKey)
+        val eventMessages = recentMessages.filter { message ->
+            val body = message.body.lowercase()
+            body.contains("event") ||
+                body.contains("ai unplugged") ||
+                body.contains("gen z talks tech") ||
+                body.contains("gdg") ||
+                body.contains("neukölln") ||
+                body.contains("neukolln") ||
+                body.contains("cube 221")
+        }
+        if (eventMessages.isEmpty()) {
+            return@withContext Result.success(
+                "I couldn't find today's event details in the room yet."
+            )
+        }
+
+        val apiKey = getApiKey()
+            ?: return@withContext Result.success(buildFallbackEventSummary(eventMessages))
+
+        val transcript = eventMessages.joinToString("\n") { message ->
+            "[${message.room}] ${message.createdAt} ${message.from}: ${message.body}"
+        }
+        val prompt = buildString {
+            append("The wearer asks what today's event is about. Use only these room updates.\n")
+            append("Answer in one or two spoken sentences, with event name, topic, and location if present.\n\n")
+            append(transcript)
+        }
+        val result = callAnthropicMessages(
+            apiKey = apiKey,
+            model = getModel(),
+            maxTokens = 120,
+            systemPrompt = "You summarize event context for a smartwatch. Be concrete and brief.",
+            userMessage = prompt
+        )
+        result.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { Result.success(buildFallbackEventSummary(eventMessages)) }
+        )
+    }
+
     suspend fun postRoomMessage(message: String, requestedRoom: String? = null): Result<String> =
         withContext(Dispatchers.IO) {
             val groupMindKey = getGroupMindKey()
@@ -999,6 +1069,21 @@ class ClawRunner(private val context: Context) {
             ?: return "I couldn't find any recent family updates."
         return "Latest family activity is in ${latest.room}. ${latest.from} said: ${latest.body}"
             .take(220)
+    }
+
+    private fun buildFallbackEventSummary(messages: List<FamilyMessage>): String {
+        val combined = messages.joinToString(" ") { it.body }
+        val knownEvent = Regex("AI Unplugged[^.\\n]*Gen Z Talks Tech", RegexOption.IGNORE_CASE)
+            .find(combined)
+            ?.value
+            ?: "AI Unplugged: Gen Z Talks Tech"
+        val location = when {
+            combined.contains("CUBE 221", ignoreCase = true) -> "at CUBE 221 on Sonnenallee in Neukölln"
+            combined.contains("Sonnenallee", ignoreCase = true) -> "on Sonnenallee in Neukölln"
+            combined.contains("Neukölln", ignoreCase = true) || combined.contains("Neukolln", ignoreCase = true) -> "in Neukölln"
+            else -> ""
+        }
+        return "Today's event is $knownEvent ${location}.".replace(Regex("\\s+"), " ").trim().take(220)
     }
 
     // ── Mode 2: Kotlin RAG — pre-search + inject ──────────────────────────────

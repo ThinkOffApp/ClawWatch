@@ -151,8 +151,27 @@ ClawWatch now intercepts some commands locally instead of sending them to the mo
 
 - **Set a timer**: say `set a timer for 10 minutes` and ClawWatch will hand it off to the watch's internal timer app.
 - **Check pulse**: say `what is my pulse` and ClawWatch will read the watch heart-rate sensor directly.
+- **Measure and write pulse**: say `measure my pulse and write it to Google Health` and ClawWatch will take a live watch heart-rate reading and write it to Health Connect when permission is granted.
 - **Check vitals**: say `check my vitals` to get a live snapshot of pulse, movement, light, pressure, and other available watch signals.
 - **Check the family**: say `what's going on with the family` and ClawWatch will summarize the configured GroupMind room updates.
+- **Write to the room**: say `tell the family that I am on my way` or `send message to the room saying ...` and ClawWatch will post to the configured GroupMind room.
+- **Check live weather**: say `check weather tomorrow in Berlin` for an Open-Meteo forecast without needing a search API key.
+- **Check event context**: say `what's the topic of today's event I'm attending` and ClawWatch will summarize relevant recent GroupMind room context.
+
+Phone/Oura vitals arrive through the Wear Data Layer path `/clawwatch/vitals` as a JSON `payload`, for example:
+
+```json
+{
+  "source": "Oura",
+  "resting_heart_rate_bpm": 54,
+  "hrv_rmssd_ms": 42.0,
+  "sleep_summary": "7h 20m sleep",
+  "readiness_summary": "good readiness",
+  "updated_at_epoch_ms": 1777032000000
+}
+```
+
+The private phone companion should read phone-side Health Connect/Oura records and send that snapshot to the watch. ClawWatch will include fresh phone/Oura data in `check Google Health` and `check my vitals` responses, falling back clearly when no phone snapshot has arrived.
 
 This means ClawWatch can act as a real local watch agent instead of bluffing about capabilities it does not have.
 
