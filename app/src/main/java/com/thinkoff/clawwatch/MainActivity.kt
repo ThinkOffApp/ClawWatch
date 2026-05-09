@@ -691,7 +691,12 @@ class MainActivity : AppCompatActivity() {
             Regex("(?i)^tell (?:(?:the )?(?:room|team|family)) (?:(?<room>[a-z0-9._-]+) )?(?:that )?(?<body>.+)$"),
             Regex("(?i)^send to (?<room>[a-z0-9._-]+) (?<body>.+)$"),
             Regex("(?i)^post to (?<room>[a-z0-9._-]+) (?<body>.+)$"),
-            Regex("(?i)^write to (?<room>[a-z0-9._-]+) (?<body>.+)$")
+            Regex("(?i)^write to (?<room>[a-z0-9._-]+) (?<body>.+)$"),
+            // 'update room ...' / 'update the room ...' — petrus's
+            // preferred phrasing for room posts. Both forms with and
+            // without an explicit room slug.
+            Regex("(?i)^update (?:(?:the )?(?:room|team|family)) (?:(?<room>[a-z0-9._-]+) )?(?:saying |that |with )?(?<body>.+)$"),
+            Regex("(?i)^update (?<room>[a-z0-9._-]+) (?:saying |that |with )?(?<body>.+)$")
         )
 
         for (pattern in explicitMessagePatterns) {
