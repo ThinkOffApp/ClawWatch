@@ -5,9 +5,13 @@ import android.os.Build
 import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BodyTemperatureRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.OxygenSaturationRecord
+import androidx.health.connect.client.records.RespiratoryRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -73,6 +77,20 @@ class HealthConnectManager(context: Context) {
         HealthPermission.getReadPermission(ExerciseSessionRecord::class)
     )
 
+    // Oura-rich metrics. Treated as optional — Oura users will have
+    // these via Health Connect; users without an Oura ring (or any
+    // skin-temp / SpO2 source) still see the rest of the snapshot
+    // populate normally. We request them but degrade gracefully if
+    // a particular record class isn't supported on this firmware.
+    private val ouraOptionalPermissions: Set<String> by lazy {
+        val set = mutableSetOf<String>()
+        runCatching { set += HealthPermission.getReadPermission(BodyTemperatureRecord::class) }
+        runCatching { set += HealthPermission.getReadPermission(OxygenSaturationRecord::class) }
+        runCatching { set += HealthPermission.getReadPermission(RespiratoryRateRecord::class) }
+        runCatching { set += HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class) }
+        set
+    }
+
     private val writePermission: String =
         HealthPermission.getWritePermission(HeartRateRecord::class)
 
@@ -117,7 +135,7 @@ class HealthConnectManager(context: Context) {
     }
 
     val allRequestablePermissions: Set<String>
-        get() = permissions + optionalPermissions + setOf(writePermission)
+        get() = permissions + optionalPermissions + ouraOptionalPermissions + setOf(writePermission)
 
     private suspend fun getGrantedPermissions(): Set<String> {
         if (!isAvailable()) return emptySet()
@@ -171,6 +189,16 @@ class HealthConnectManager(context: Context) {
             // Exercise
             val exerciseSummary = readRecentExercise(timeRange)
             if (exerciseSummary != null) parts += exerciseSummary
+
+            // Oura-rich metrics (compact form for the LLM prompt).
+            val skinTemp = readLatestBodyTemperature(timeRange)
+            if (skinTemp != null) parts += "body temp ${"%.1f".format(skinTemp)}°C"
+            val spo2 = readLatestSpo2(timeRange)
+            if (spo2 != null) parts += "SpO2 ${spo2}%"
+            val respRate = readLatestRespiratoryRate(timeRange)
+            if (respRate != null) parts += "respiration ${"%.0f".format(respRate)}/min"
+            val activeCal = readActiveCalories(timeRange)
+            if (activeCal != null) parts += "active kcal ${formatNumber(activeCal)}"
 
         } catch (e: Exception) {
             Log.w(TAG, "Failed reading health data: ${e.message}")
@@ -287,6 +315,23 @@ class HealthConnectManager(context: Context) {
             val exerciseSummary = readRecentExercise(timeRange)
             if (exerciseSummary != null) parts += exerciseSummary
 
+            // Oura-rich metrics — optional, populate when available.
+            // Skin temperature deviation is Oura's signature output;
+            // SpO2 + respiratory rate are nightly readings; active
+            // calories complement steps/exercise.
+            val skinTemp = readLatestBodyTemperature(timeRange)
+            if (skinTemp != null) {
+                parts += "Body temperature is ${"%.1f".format(skinTemp)}°C"
+            }
+            val spo2 = readLatestSpo2(timeRange)
+            if (spo2 != null) parts += "Blood oxygen is $spo2%"
+            val respRate = readLatestRespiratoryRate(timeRange)
+            if (respRate != null) {
+                parts += "Respiratory rate is ${"%.0f".format(respRate)} breaths per minute"
+            }
+            val activeCal = readActiveCalories(timeRange)
+            if (activeCal != null) parts += "Active calories burned: ${formatNumber(activeCal)}"
+
         } catch (e: Exception) {
             Log.w(TAG, "Health snapshot failed: ${e.message}")
             return@withContext "I had trouble reading your health data right now."
@@ -399,6 +444,68 @@ class HealthConnectManager(context: Context) {
         ExerciseSessionRecord.EXERCISE_TYPE_YOGA -> "Yoga"
         ExerciseSessionRecord.EXERCISE_TYPE_WEIGHTLIFTING -> "Strength training"
         else -> "Exercise"
+    }
+
+    // ── Oura-rich readers ────────────────────────────────────────────────────
+    // All four wrap reflective record-class loads in try/catch so the
+    // app stays compatible with older Health Connect SDK builds that
+    // may not ship a particular record class.
+
+    private suspend fun readLatestBodyTemperature(timeRange: TimeRangeFilter): Double? {
+        return try {
+            val request = ReadRecordsRequest(
+                recordType = BodyTemperatureRecord::class,
+                timeRangeFilter = timeRange
+            )
+            val response = healthConnectClient!!.readRecords(request)
+            response.records.lastOrNull()?.temperature?.inCelsius
+        } catch (e: Exception) {
+            Log.w(TAG, "Body temp read failed: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun readLatestSpo2(timeRange: TimeRangeFilter): Int? {
+        return try {
+            val request = ReadRecordsRequest(
+                recordType = OxygenSaturationRecord::class,
+                timeRangeFilter = timeRange
+            )
+            val response = healthConnectClient!!.readRecords(request)
+            response.records.lastOrNull()?.percentage?.value?.toInt()
+        } catch (e: Exception) {
+            Log.w(TAG, "SpO2 read failed: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun readLatestRespiratoryRate(timeRange: TimeRangeFilter): Double? {
+        return try {
+            val request = ReadRecordsRequest(
+                recordType = RespiratoryRateRecord::class,
+                timeRangeFilter = timeRange
+            )
+            val response = healthConnectClient!!.readRecords(request)
+            response.records.lastOrNull()?.rate
+        } catch (e: Exception) {
+            Log.w(TAG, "Respiratory rate read failed: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun readActiveCalories(timeRange: TimeRangeFilter): Long? {
+        return try {
+            val request = ReadRecordsRequest(
+                recordType = ActiveCaloriesBurnedRecord::class,
+                timeRangeFilter = timeRange
+            )
+            val response = healthConnectClient!!.readRecords(request)
+            val total = response.records.sumOf { it.energy.inKilocalories }
+            if (total > 0.0) total.toLong() else null
+        } catch (e: Exception) {
+            Log.w(TAG, "Active calories read failed: ${e.message}")
+            null
+        }
     }
 
     private fun formatNumber(n: Long): String {

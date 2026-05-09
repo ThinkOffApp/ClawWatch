@@ -19,6 +19,12 @@
     <uses-permission android:name="android.permission.health.READ_EXERCISE"/>
     <uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY_RMSSD"/>
     <uses-permission android:name="android.permission.health.WRITE_HEART_RATE"/>
+    <!-- Oura-rich metrics. Used when Oura ring (or any source) writes
+         these into Health Connect. App degrades gracefully if absent. -->
+    <uses-permission android:name="android.permission.health.READ_BODY_TEMPERATURE"/>
+    <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION"/>
+    <uses-permission android:name="android.permission.health.READ_RESPIRATORY_RATE"/>
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
 
 
 
