@@ -16,6 +16,11 @@ ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` a
   <a href="https://x.com/petruspennanen/status/2030743559742083549?s=20"><strong>Watch the ClawWatch V2.0 clip on X</strong></a>
 </p>
 
+> **Looking for the Google Play build?** It lives in
+> [ThinkOffApp/ClawWatch-Pro](https://github.com/ThinkOffApp/ClawWatch-Pro) - the packaged
+> release of this project, with BYOK and offline voice input. This repository is the original
+> and the place the work happens; Pro is what you install.
+
 ## ClawWatch V2.0
 
 ClawWatch is now moving from a pure voice-demo novelty into a uniquely embodied agent platform.
