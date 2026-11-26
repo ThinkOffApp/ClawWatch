@@ -16,10 +16,9 @@ ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` a
   <a href="https://x.com/petruspennanen/status/2030743559742083549?s=20"><strong>Watch the ClawWatch V2.0 clip on X</strong></a>
 </p>
 
-> **Related repository.** [ThinkOffApp/ClawWatch-Pro](https://github.com/ThinkOffApp/ClawWatch-Pro)
-> is the Play-targeted packaging of this project, with BYOK and offline voice input. It is not
-> published on Google Play yet, so build it yourself for now. This repository is the original
-> and where the work happens.
+> **Google Play packaging.** A Play-targeted BYOK build (`ClawWatch-Pro`, currently in a private repository)
+> is in progress and not published on Google Play yet — build from this repository for now. This repository
+> is the open-source original where development happens.
 
 ## ClawWatch V2.0
 
@@ -276,5 +275,6 @@ A watch has 1.5–2 GB RAM. NullClaw uses 1 MB of it. OpenClaw would need the en
 AGPL-3.0 — see [LICENSE](LICENSE)
 
 Built by [ThinkOff](https://thinkoff.io) · Powered by [NullClaw](https://github.com/nullclaw/nullclaw) · Logo by [herrpunk](https://github.com/herrpunk)
+Part of the `*Watch` family: [CodeWatch](https://codewatch.app) ([Google Play](https://play.google.com/store/apps/details?id=com.thinkoff.codewatch)) · [CarWatch](https://github.com/ThinkOffApp/CarWatch) · [WhereWatch](https://github.com/ThinkOffApp/WhereWatch) · [GroupMind](https://groupmind.one)
 
 *ClawWatch is a smartwatch AI assistant, a Wear OS LLM client, and an on-device voice agent for the Samsung Galaxy Watch — search for it however you like, it answers to all of them.*
