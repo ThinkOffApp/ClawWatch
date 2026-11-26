@@ -17,7 +17,7 @@ ClawWatch bundles [NullClaw](https://github.com/nullclaw/nullclaw) `v2026.3.7` a
 </p>
 
 > **Google Play packaging.** A Play-targeted BYOK build (`ClawWatch-Pro`, currently in a private repository)
-> is in progress and not published on Google Play yet — build from this repository for now. This repository
+> is in progress and not published on Google Play yet; build from this repository for now. This repository
 > is the open-source original where development happens.
 
 ## ClawWatch V2.0
