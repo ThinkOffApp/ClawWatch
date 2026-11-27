@@ -275,6 +275,6 @@ A watch has 1.5–2 GB RAM. NullClaw uses 1 MB of it. OpenClaw would need the en
 AGPL-3.0 — see [LICENSE](LICENSE)
 
 Built by [ThinkOff](https://thinkoff.io) · Powered by [NullClaw](https://github.com/nullclaw/nullclaw) · Logo by [herrpunk](https://github.com/herrpunk)
-Part of the `*Watch` family: [CodeWatch](https://codewatch.app) ([Google Play](https://play.google.com/store/apps/details?id=com.thinkoff.codewatch)) · [CarWatch](https://github.com/ThinkOffApp/CarWatch) · [WhereWatch](https://github.com/ThinkOffApp/WhereWatch) · [GroupMind](https://groupmind.one)
+Part of the `*Watch` family: [CodeWatch](https://codewatch.app) ([Google Play](https://play.google.com/store/apps/details?id=com.thinkoff.codewatch)) · [CarWatch](https://github.com/ThinkOffApp/CarWatch) · [GroupMind](https://groupmind.one)
 
 *ClawWatch is a smartwatch AI assistant, a Wear OS LLM client, and an on-device voice agent for the Samsung Galaxy Watch — search for it however you like, it answers to all of them.*
